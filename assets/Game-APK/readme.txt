@@ -10,7 +10,7 @@ and to any other APK / AAB store over the internet.
 App ID:			1302247
 App Key:		RReXYGgroUPAeZeDyKGhiWGLuCmnbNyr
 App Name:		Web Dashers
-App Version:	1.0
+App Version:	1.1
 Package:		com.webdashersgithub.webdashers
 Mode:			Free App
 -------------------------------------
