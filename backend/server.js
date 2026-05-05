@@ -22,7 +22,7 @@ function saveUsers(users) {
 }
 
 // REGISTER
-app.post('/accounts/register.php', (req, res) => {
+app.post('/register.php', (req, res) => {
   const { username, password } = req.body;
 
   let users = getUsers();
@@ -37,8 +37,9 @@ app.post('/accounts/register.php', (req, res) => {
   res.send('1');
 });
 
+
 // LOGIN
-app.post('/accounts/loginGJAccount.php', (req, res) => {
+app.post('/loginGJAccount.php', (req, res) => {
   const { username, password } = req.body;
 
   let users = getUsers();
