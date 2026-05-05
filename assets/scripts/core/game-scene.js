@@ -5642,87 +5642,111 @@ _applyMirrorEffect() {
 
     // ── HTML input factory ────────────────────────────────────────────────────
     const canvas     = this.sys.game.canvas;
-    const htmlInputs = [];
+    // ── Input field factory (pure Phaser, no HTML elements) ─────────────────
+    const _activeFields = [];
+    let _focusedField = null;
 
     const makeHtmlInput = (x, y, w, h, placeholder, isPassword = false) => {
-        // Phaser background box
+        let value = '';
+        let focused = false;
+
+        // Background box
         const bg = this.add.graphics().setScrollFactor(0).setDepth(301);
-        bg.fillStyle(0x000000, 0.45);
-        bg.fillRoundedRect(x - w / 2, y - h / 2, w, h, 8);
-        bg.lineStyle(2, 0xffffff, 0.35);
-        bg.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 8);
+        const drawBg = () => {
+            bg.clear();
+            bg.fillStyle(0x000000, focused ? 0.65 : 0.45);
+            bg.fillRoundedRect(x - w / 2, y - h / 2, w, h, 8);
+            bg.lineStyle(2, focused ? 0x00ddff : 0xffffff, focused ? 0.9 : 0.35);
+            bg.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 8);
+        };
+        drawBg();
         popup.add(bg);
 
-        // Placeholder bitmap label
+        // Placeholder
         const ph = this.add.bitmapText(x, y, 'bigFont', placeholder, 19)
             .setOrigin(0.5).setTint(0x889988).setScrollFactor(0).setDepth(302);
         popup.add(ph);
 
-        // Typed text mirror
-        const mirror = this.add.bitmapText(x, y, 'bigFont', '', 19)
+        // Display text
+        const display = this.add.bitmapText(x, y, 'bigFont', '', 19)
             .setOrigin(0.5).setTint(0xffffff).setScrollFactor(0).setDepth(302);
-        popup.add(mirror);
+        popup.add(display);
 
-        // Real HTML input (transparent, just for typing)
-        const el = document.createElement('input');
-        el.type = isPassword ? 'password' : 'text';
-        el.maxLength = isPassword ? 64 : 32;
-        el.autocomplete = isPassword ? 'current-password' : 'username';
-        el.style.cssText = `
-            position:fixed; background:transparent; border:none; outline:none;
-            color:transparent; caret-color:#ffffff; z-index:9999;
-            font-size:1px; text-align:center;`;
-        document.body.appendChild(el);
-        htmlInputs.push(el);
+        // Blinking cursor
+        const cursor = this.add.bitmapText(x, y, 'bigFont', '|', 19)
+            .setOrigin(0.5).setTint(0x00ddff).setScrollFactor(0).setDepth(302).setVisible(false);
+        popup.add(cursor);
+        let cursorTimer = null;
 
-        const reposition = () => {
-            const r = canvas.getBoundingClientRect();
-            const sx = r.width / sw, sy = r.height / sh;
-            el.style.left   = `${r.left + (x - w / 2) * sx}px`;
-            el.style.top    = `${r.top  + (y - h / 2) * sy}px`;
-            el.style.width  = `${w * sx}px`;
-            el.style.height = `${h * sy}px`;
+        const updateDisplay = () => {
+            const shown = isPassword ? '•'.repeat(value.length) : value;
+            display.setText(shown);
+            ph.setVisible(value.length === 0);
+            // position cursor after text
+            const textW = display.width;
+            cursor.setPosition(x + textW / 2 + 4, y);
         };
-        reposition();
-        window.addEventListener('resize', reposition);
 
-        el.addEventListener('input', () => {
-            const val = el.value;
-            ph.setVisible(val.length === 0);
-            mirror.setText(isPassword ? '•'.repeat(val.length) : val);
-        });
+        const setFocused = (f) => {
+            focused = f;
+            drawBg();
+            cursor.setVisible(f);
+            if (f) {
+                cursorTimer = this.time.addEvent({ delay: 500, loop: true, callback: () => cursor.setVisible(!cursor.visible) });
+                _focusedField = field;
+            } else {
+                if (cursorTimer) { cursorTimer.remove(); cursorTimer = null; }
+                cursor.setVisible(false);
+                if (_focusedField === field) _focusedField = null;
+            }
+        };
 
-        // Block ALL keyboard events from reaching Phaser while this input is focused
-        const stopKey = (e) => e.stopPropagation();
-        el.addEventListener('keydown', stopKey, true);
-        el.addEventListener('keyup',   stopKey, true);
-        el.addEventListener('keypress',stopKey, true);
-
-        // Disable Phaser keyboard capture while focused
-        el.addEventListener('focus', () => {
-            if (this.input && this.input.keyboard) this.input.keyboard.enabled = false;
-        });
-        el.addEventListener('blur', () => {
-            if (this.input && this.input.keyboard) this.input.keyboard.enabled = true;
-        });
-
-        // click on bg box focuses the real input
+        // Click to focus
         const hitZone = this.add.zone(x, y, w, h).setScrollFactor(0).setDepth(303).setInteractive();
         popup.add(hitZone);
-        hitZone.on('pointerdown', () => el.focus());
+        hitZone.on('pointerdown', () => {
+            _activeFields.forEach(f => { if (f !== field) f.blur(); });
+            setFocused(true);
+        });
 
-        const getValue = () => el.value;
-        const setValue = (v) => { el.value = v; mirror.setText(isPassword ? '•'.repeat(v.length) : v); ph.setVisible(v.length === 0); };
-        const clear    = () => setValue('');
-        return { getValue, setValue, clear, el };
+        const getValue = () => value;
+        const setValue = (v) => { value = v; updateDisplay(); };
+        const clear = () => setValue('');
+        const blur = () => setFocused(false);
+
+        // el is a dummy object so existing code referencing .el.style.display still works
+        const el = { style: { display: '' }, _field: true };
+
+        const field = { getValue, setValue, clear, blur, el, _setFocused: setFocused, _onKey: (key, shift) => {
+            if (!focused) return;
+            if (key === 'Backspace') {
+                value = value.slice(0, -1);
+            } else if (key === 'Tab' || key === 'Enter') {
+                // do nothing special here
+            } else if (key.length === 1) {
+                const maxLen = isPassword ? 64 : 32;
+                if (value.length < maxLen) value += key;
+            }
+            updateDisplay();
+        }};
+        _activeFields.push(field);
+        return field;
     };
+
+    // Global keyboard handler for the popup
+    const _onKeyDown = (e) => {
+        if (!_focusedField) return;
+        e.preventDefault();
+        e.stopPropagation();
+        _focusedField._onKey(e.key, e.shiftKey);
+    };
+    window.addEventListener('keydown', _onKeyDown, true);
 
     // ── HTML cleanup ──────────────────────────────────────────────────────────
     const htmlCleanup = () => {
-        htmlInputs.forEach(el => el.remove());
+        window.removeEventListener('keydown', _onKeyDown, true);
         if (this.input && this.input.keyboard) this.input.keyboard.enabled = true;
     };
-
     // ── button factory (reuses existing game style) ───────────────────────────
     const BH = 54, BW = 240;
     const btnBorder = this.textures.get('GJ_button01').source[0].width * 0.3;
