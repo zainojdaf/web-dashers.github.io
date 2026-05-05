@@ -22,7 +22,7 @@ function saveUsers(users) {
 }
 
 // REGISTER
-app.post('/register.php', (req, res) => {
+app.post('/registerGJAccount.php', (req, res) => {
   const { username, password } = req.body;
 
   let users = getUsers();
