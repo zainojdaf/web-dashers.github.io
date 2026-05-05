@@ -537,7 +537,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           _showStatus("no proxy configured. set window._gdProxyUrl first.", "#ff0000");
           return;
         }
-        const formBody = `levelID=${levelId}&secret=Wmfd2893gb7`;
+       const formBody = `levelID=${levelId}&inc=1&extras=1&secret=Wmfd2893gb7`;
         const res = await fetch(`${PROXY_BASE}/downloadGJLevel22.php`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
