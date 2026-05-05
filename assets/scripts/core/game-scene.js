@@ -5575,7 +5575,6 @@ _applyMirrorEffect() {
     const cx = sw / 2, cy = 320;
     const PW = 700, PH = 480;
 
-    // ── helpers ───────────────────────────────────────────────────────────────
     const GD_SERVER = (window._gdProxyUrl || '').replace(/\/$/, '');
     const SECRET    = 'Wmfd2893gb7';
 
@@ -5590,42 +5589,25 @@ _applyMirrorEffect() {
         return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
     };
 
-    // GD uses XOR-then-base64 for passwords sent to loginGJAccount
-    const xorB64 = (str, key = 37526) => {
-        let out = '';
-        for (let i = 0; i < str.length; i++) out += String.fromCharCode(str.charCodeAt(i) ^ (key >> ((i % 4) * 4) & 0xff));
-        return btoa(out);
-    };
-
-    // ── popup container ───────────────────────────────────────────────────────
+    // ── popup ─────────────────────────────────────────────────────────────────
     this._accountPopup = this.add.container(0, 0).setScrollFactor(0).setDepth(300);
     const popup = this._accountPopup;
 
-    const dim = this.add.rectangle(cx, cy, sw * 2, sh * 2, 0x000000, 0.55).setInteractive();
-    popup.add(dim);
+    popup.add(this.add.rectangle(cx, cy, sw * 2, sh * 2, 0x000000, 0.55).setInteractive());
 
     const corner = 0.325 * this.textures.get('GJ_square01').source[0].width;
     popup.add(this._drawScale9(cx, cy, PW, PH, 'GJ_square01', corner, 0xffffff, 1));
 
-    // close button
-    const closeBtn = this.add.image(cx - PW / 2 + 12, cy - PH / 2 + 12, 'GJ_WebSheet', 'GJ_closeBtn_001.png')
-        .setScale(0.8).setInteractive();
+    const closeBtn = this.add.image(cx - PW / 2 + 12, cy - PH / 2 + 12, 'GJ_WebSheet', 'GJ_closeBtn_001.png').setScale(0.8).setInteractive();
     popup.add(closeBtn);
     this._makeBouncyButton(closeBtn, 0.8, () => {
-        htmlCleanup();
+        cleanup();
         popup.destroy();
         this._accountPopup = null;
     });
 
-    // ── tab state ─────────────────────────────────────────────────────────────
-    const TABS = ['Login', 'Register'];
-    let activeTab = 0;
+    popup.add(this.add.bitmapText(cx, cy - PH / 2 + 42, 'bigFont', 'Account', 46).setOrigin(0.5));
 
-    // ── title ─────────────────────────────────────────────────────────────────
-    const title = this.add.bitmapText(cx, cy - PH / 2 + 42, 'bigFont', 'Account', 46).setOrigin(0.5);
-    popup.add(title);
-
-    // ── status text ───────────────────────────────────────────────────────────
     const statusTxt = this.add.bitmapText(cx, cy + PH / 2 - 52, 'bigFont', '', 22).setOrigin(0.5);
     popup.add(statusTxt);
     let statusTimer = null;
@@ -5635,177 +5617,128 @@ _applyMirrorEffect() {
         if (duration) statusTimer = setTimeout(() => statusTxt.setText(''), duration);
     };
 
-    // ── logged-in state ───────────────────────────────────────────────────────
     const savedUser = () => localStorage.getItem('gd_userName') || '';
     const savedAID  = () => localStorage.getItem('gd_accountID') || '';
-    const savedGJP  = () => localStorage.getItem('gd_gjp2') || '';    // stored as gjp2
+    const savedGJP  = () => localStorage.getItem('gd_gjp2') || '';
 
-    // ── HTML input factory ────────────────────────────────────────────────────
-    const canvas     = this.sys.game.canvas;
-    // ── Input field factory (pure Phaser, no HTML elements) ─────────────────
-    const _activeFields = [];
+    // ── keyboard input ────────────────────────────────────────────────────────
     let _focusedField = null;
-
-    const makeHtmlInput = (x, y, w, h, placeholder, isPassword = false) => {
-        let value = '';
-        let focused = false;
-
-        // Background box
-        const bg = this.add.graphics().setScrollFactor(0).setDepth(301);
-        const drawBg = () => {
-            bg.clear();
-            bg.fillStyle(0x000000, focused ? 0.65 : 0.45);
-            bg.fillRoundedRect(x - w / 2, y - h / 2, w, h, 8);
-            bg.lineStyle(2, focused ? 0x00ddff : 0xffffff, focused ? 0.9 : 0.35);
-            bg.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 8);
-        };
-        drawBg();
-        popup.add(bg);
-
-        // Placeholder
-        const ph = this.add.bitmapText(x, y, 'bigFont', placeholder, 19)
-            .setOrigin(0.5).setTint(0x889988).setScrollFactor(0).setDepth(302);
-        popup.add(ph);
-
-        // Display text
-        const display = this.add.bitmapText(x, y, 'bigFont', '', 19)
-            .setOrigin(0.5).setTint(0xffffff).setScrollFactor(0).setDepth(302);
-        popup.add(display);
-
-        // Blinking cursor
-        const cursor = this.add.bitmapText(x, y, 'bigFont', '|', 19)
-            .setOrigin(0.5).setTint(0x00ddff).setScrollFactor(0).setDepth(302).setVisible(false);
-        popup.add(cursor);
-        let cursorTimer = null;
-
-        const updateDisplay = () => {
-            const shown = isPassword ? '•'.repeat(value.length) : value;
-            display.setText(shown);
-            ph.setVisible(value.length === 0);
-            // position cursor after text
-            const textW = display.width;
-            cursor.setPosition(x + textW / 2 + 4, y);
-        };
-
-        const setFocused = (f) => {
-            focused = f;
-            drawBg();
-            cursor.setVisible(f);
-            if (f) {
-                cursorTimer = this.time.addEvent({ delay: 500, loop: true, callback: () => cursor.setVisible(!cursor.visible) });
-                _focusedField = field;
-            } else {
-                if (cursorTimer) { cursorTimer.remove(); cursorTimer = null; }
-                cursor.setVisible(false);
-                if (_focusedField === field) _focusedField = null;
-            }
-        };
-
-        // Click to focus
-        const hitZone = this.add.zone(x, y, w, h).setScrollFactor(0).setDepth(303).setInteractive();
-        popup.add(hitZone);
-        hitZone.on('pointerdown', () => {
-            _activeFields.forEach(f => { if (f !== field) f.blur(); });
-            setFocused(true);
-        });
-
-        const getValue = () => value;
-        const setValue = (v) => { value = v; updateDisplay(); };
-        const clear = () => setValue('');
-        const blur = () => setFocused(false);
-
-        // el is a dummy object so existing code referencing .el.style.display still works
-        const el = { style: { display: '' }, _field: true };
-
-        const field = { getValue, setValue, clear, blur, el, _setFocused: setFocused, _onKey: (key, shift) => {
-            if (!focused) return;
-            if (key === 'Backspace') {
-                value = value.slice(0, -1);
-            } else if (key === 'Tab' || key === 'Enter') {
-                // do nothing special here
-            } else if (key.length === 1) {
-                const maxLen = isPassword ? 64 : 32;
-                if (value.length < maxLen) value += key;
-            }
-            updateDisplay();
-        }};
-        _activeFields.push(field);
-        return field;
-    };
-
-    // Global keyboard handler for the popup
     const _onKeyDown = (e) => {
         if (!_focusedField) return;
         e.preventDefault();
         e.stopPropagation();
-        _focusedField._onKey(e.key, e.shiftKey);
+        _focusedField._onKey(e.key);
     };
     window.addEventListener('keydown', _onKeyDown, true);
 
-    // ── HTML cleanup ──────────────────────────────────────────────────────────
-    const htmlCleanup = () => {
+    const cleanup = () => {
         window.removeEventListener('keydown', _onKeyDown, true);
         if (this.input && this.input.keyboard) this.input.keyboard.enabled = true;
     };
-    // ── button factory (reuses existing game style) ───────────────────────────
-    const BH = 54, BW = 240;
-    const btnBorder = this.textures.get('GJ_button01').source[0].width * 0.3;
 
-    const makeBtn = (bx, by, label, action, tint = 0xffffff) => {
+    // ── input field factory ───────────────────────────────────────────────────
+    const makeField = (container, x, y, w, h, placeholder, isPassword = false) => {
+        let value = '';
+        let focused = false;
+
+        const bg = this.add.graphics().setScrollFactor(0).setDepth(301);
+        const drawBg = () => {
+            bg.clear();
+            bg.fillStyle(0x000000, focused ? 0.65 : 0.35);
+            bg.fillRoundedRect(x - w/2, y - h/2, w, h, 8);
+            bg.lineStyle(2, focused ? 0x00ccff : 0x888888, focused ? 1 : 0.6);
+            bg.strokeRoundedRect(x - w/2, y - h/2, w, h, 8);
+        };
+        drawBg();
+        container.add(bg);
+
+        const ph = this.add.bitmapText(x, y, 'bigFont', placeholder, 19).setOrigin(0.5).setTint(0x888888).setScrollFactor(0).setDepth(302);
+        container.add(ph);
+
+        const disp = this.add.bitmapText(x, y, 'bigFont', '', 19).setOrigin(0.5).setTint(0xffffff).setScrollFactor(0).setDepth(302);
+        container.add(disp);
+
+        const cur = this.add.bitmapText(x, y, 'bigFont', '|', 19).setOrigin(0, 0.5).setTint(0x00ccff).setScrollFactor(0).setDepth(302).setVisible(false);
+        container.add(cur);
+
+        let curEvent = null;
+        const updateDisp = () => {
+            const shown = isPassword ? '\u2022'.repeat(value.length) : value;
+            disp.setText(shown);
+            ph.setVisible(value.length === 0);
+            cur.setPosition(x + disp.width / 2 + 2, y);
+        };
+
+        const setFocus = (f) => {
+            focused = f;
+            drawBg();
+            cur.setVisible(f);
+            if (f) {
+                if (this.input && this.input.keyboard) this.input.keyboard.enabled = false;
+                curEvent = this.time.addEvent({ delay: 500, loop: true, callback: () => cur.setVisible(!cur.visible) });
+                _focusedField = field;
+            } else {
+                if (curEvent) { curEvent.remove(); curEvent = null; }
+                cur.setVisible(false);
+                if (_focusedField === field) _focusedField = null;
+            }
+        };
+
+        const hz = this.add.zone(x, y, w, h).setScrollFactor(0).setDepth(303).setInteractive();
+        container.add(hz);
+        hz.on('pointerdown', () => {
+            if (_focusedField && _focusedField !== field) _focusedField._blur();
+            setFocus(true);
+        });
+
+        const field = {
+            getValue: () => value,
+            setValue: (v) => { value = v; updateDisp(); },
+            clear: () => { value = ''; updateDisp(); },
+            _blur: () => setFocus(false),
+            _onKey: (key) => {
+                if (key === 'Backspace') { value = value.slice(0, -1); }
+                else if (key.length === 1) { if (value.length < (isPassword ? 64 : 32)) value += key; }
+                updateDisp();
+            }
+        };
+        return field;
+    };
+
+    // ── tab setup ─────────────────────────────────────────────────────────────
+    const btnBorder = this.textures.get('GJ_button01').source[0].width * 0.3;
+    const BH = 54, BW = 240, TAB_W = 160, TAB_H = 44;
+
+    const makeBtn = (bx, by, label, action) => {
         const grp = this.add.container(bx, by).setScrollFactor(0).setDepth(302);
-        grp.add(this._drawScale9(0, 0, BW, BH, 'GJ_button01', btnBorder, tint, 1));
-        const lbl = this.add.bitmapText(0, -4, 'goldFont', label, 38).setOrigin(0.5, 0.5);
-        grp.add(lbl);
+        grp.add(this._drawScale9(0, 0, BW, BH, 'GJ_button01', btnBorder, 0xffffff, 1));
+        grp.add(this.add.bitmapText(0, -4, 'goldFont', label, 38).setOrigin(0.5, 0.5));
         const hz = this.add.zone(0, 0, BW, BH).setInteractive();
         grp.add(hz);
         const base = 1, pressed = 1.26;
-        hz.on('pointerdown', () => {
-            hz._p = true;
-            this.tweens.killTweensOf(grp, 'scale');
-            this.tweens.add({ targets: grp, scale: pressed, duration: 300, ease: 'Bounce.Out' });
-        });
-        hz.on('pointerout', () => {
-            if (hz._p) { hz._p = false; this.tweens.killTweensOf(grp, 'scale'); this.tweens.add({ targets: grp, scale: base, duration: 400, ease: 'Bounce.Out' }); }
-        });
-        hz.on('pointerup', () => {
-            if (hz._p) { hz._p = false; this.tweens.killTweensOf(grp, 'scale'); this.tweens.add({ targets: grp, scale: base, duration: 400, ease: 'Bounce.Out' }); action(); }
-        });
+        hz.on('pointerdown', () => { hz._p = true; this.tweens.add({ targets: grp, scale: pressed, duration: 300, ease: 'Bounce.Out' }); });
+        hz.on('pointerout',  () => { if (hz._p) { hz._p = false; this.tweens.add({ targets: grp, scale: base, duration: 400, ease: 'Bounce.Out' }); } });
+        hz.on('pointerup',   () => { if (hz._p) { hz._p = false; this.tweens.add({ targets: grp, scale: base, duration: 400, ease: 'Bounce.Out' }); action(); } });
         popup.add(grp);
         return grp;
     };
 
-    // ── tab buttons ───────────────────────────────────────────────────────────
-    const TAB_W = 160, TAB_H = 44, TAB_GAP = 20;
-    const tabBtns = TABS.map((name, i) => {
-        const tx = cx + (i - 0.5) * (TAB_W + TAB_GAP);
-        const ty = cy - PH / 2 + 100;
-        const grp = this.add.container(tx, ty).setScrollFactor(0).setDepth(302);
-        const isAct = i === activeTab;
-        grp.add(this._drawScale9(0, 0, TAB_W, TAB_H, 'GJ_button01', btnBorder, isAct ? 0xffffff : 0x666666, 1));
-        const lbl = this.add.bitmapText(0, -3, 'goldFont', name, 30).setOrigin(0.5, 0.5);
-        if (!isAct) lbl.setTint(0x888888);
-        grp.add(lbl);
-        const hz = this.add.zone(0, 0, TAB_W, TAB_H).setInteractive();
-        grp.add(hz);
-        hz.on('pointerup', () => switchTab(i));
-        popup.add(grp);
-        return { grp, lbl };
-    });
+    // containers for each tab
+    const loginCon = this.add.container(0, 0).setScrollFactor(0).setDepth(301);
+    const regCon   = this.add.container(0, 0).setScrollFactor(0).setDepth(301);
+    const loggedCon= this.add.container(0, 0).setScrollFactor(0).setDepth(301);
+    popup.add(loginCon);
+    popup.add(regCon);
+    popup.add(loggedCon);
 
-    // ── content containers ────────────────────────────────────────────────────
-    const loginContainer    = this.add.container(0, 0).setScrollFactor(0).setDepth(302);
-    const registerContainer = this.add.container(0, 0).setScrollFactor(0).setDepth(302);
-    const loggedContainer   = this.add.container(0, 0).setScrollFactor(0).setDepth(302);
-    popup.add(loginContainer);
-    popup.add(registerContainer);
-    popup.add(loggedContainer);
+    // ── LOGIN tab ─────────────────────────────────────────────────────────────
+    const fW = 340, fH = 42;
+    loginCon.add(this.add.bitmapText(cx, cy - 78, 'bigFont', 'Username', 20).setOrigin(0.5).setTint(0xdddddd));
+    const loginUser = makeField(loginCon, cx, cy - 55, fW, fH, 'Username');
+    loginCon.add(this.add.bitmapText(cx, cy - 8, 'bigFont', 'Password', 20).setOrigin(0.5).setTint(0xdddddd));
+    const loginPass = makeField(loginCon, cx, cy + 15, fW, fH, 'Password', true);
 
-    // ── LOGIN fields ──────────────────────────────────────────────────────────
-    const fieldY1 = cy - 40, fieldY2 = cy + 30, fieldW = 340, fieldH = 42;
-    const loginUser = makeHtmlInput(cx, fieldY1, fieldW, fieldH, 'Username');
-    const loginPass = makeHtmlInput(cx, fieldY2, fieldW, fieldH, 'Password', true);
-
-    const doLogin = async () => {
+    const loginBtn = makeBtn(cx, cy + 100, 'Login', async () => {
         const user = loginUser.getValue().trim();
         const pass = loginPass.getValue();
         if (!user || !pass) { showStatus('Fill in all fields.', 0xff9900); return; }
@@ -5813,149 +5746,112 @@ _applyMirrorEffect() {
         showStatus('Logging in...', 0xaaddff, 0);
         try {
             const gjp2 = await sha1(pass + 'mI29fmAnxgTs');
-            const res  = await gdPost('loginGJAccount.php', {
-                userName: user,
-                password: pass,
-                gjp2,
-                udid: 'S' + Math.random().toString(36).slice(2, 12),
-                sID: 76561198,
-                gameVersion: 22,
-                binaryVersion: 40,
-            });
+            const res  = await gdPost('loginGJAccount.php', { userName: user, password: pass, gjp2, udid: 'S' + Math.random().toString(36).slice(2, 12), sID: 76561198, gameVersion: 22, binaryVersion: 40 });
             if (res === '-1') { showStatus('Login failed. Check credentials.', 0xff4444); return; }
             const [accountID, playerID] = res.split(',');
-            localStorage.setItem('gd_userName',  user);
+            localStorage.setItem('gd_userName', user);
             localStorage.setItem('gd_accountID', accountID);
-            localStorage.setItem('gd_playerID',  playerID);
-            localStorage.setItem('gd_gjp2',      gjp2);
-            showStatus('Logged in!', 0x44ff88, 2500);
-            setTimeout(() => { buildLoggedIn(); }, 800);
-        } catch (e) {
-            showStatus('Error: ' + e.message, 0xff4444);
-        }
-    };
+            localStorage.setItem('gd_playerID', playerID);
+            localStorage.setItem('gd_gjp2', gjp2);
+            showStatus('Logged in!', 0x44ff88, 2000);
+            setTimeout(buildLoggedIn, 800);
+        } catch(e) { showStatus('Error: ' + e.message, 0xff4444); }
+    });
 
-    const loginBtn = makeBtn(cx, cy + 110, 'Login', doLogin);
+    // ── REGISTER tab ──────────────────────────────────────────────────────────
+    regCon.add(this.add.bitmapText(cx, cy - 105, 'bigFont', 'Username', 20).setOrigin(0.5).setTint(0xdddddd));
+    const regUser  = makeField(regCon, cx, cy - 82, fW, fH, 'Username');
+    regCon.add(this.add.bitmapText(cx, cy - 35, 'bigFont', 'Email', 20).setOrigin(0.5).setTint(0xdddddd));
+    const regEmail = makeField(regCon, cx, cy - 12, fW, fH, 'Email');
+    regCon.add(this.add.bitmapText(cx, cy + 35, 'bigFont', 'Password', 20).setOrigin(0.5).setTint(0xdddddd));
+    const regPass  = makeField(regCon, cx, cy + 58, fW, fH, 'Password', true);
 
-    // ── REGISTER fields ───────────────────────────────────────────────────────
-    const rY1 = cy - 55, rY2 = cy - 5, rY3 = cy + 50;
-    const regUser  = makeHtmlInput(cx, rY1, fieldW, fieldH, 'Username');
-    const regEmail = makeHtmlInput(cx, rY2, fieldW, fieldH, 'Email');
-    const regPass  = makeHtmlInput(cx, rY3, fieldW, fieldH, 'Password', true);
-    regUser.el.style.display = 'none'; regEmail.el.style.display = 'none'; regPass.el.style.display = 'none';
-
-    const doRegister = async () => {
+    const regBtn = makeBtn(cx, cy + 130, 'Register', async () => {
         const user  = regUser.getValue().trim();
         const email = regEmail.getValue().trim();
         const pass  = regPass.getValue();
         if (!user || !email || !pass) { showStatus('Fill in all fields.', 0xff9900); return; }
-        if (!/\S+@\S+\.\S+/.test(email)) { showStatus('Invalid email address.', 0xff9900); return; }
-        if (pass.length < 6) { showStatus('Password must be at least 6 characters.', 0xff9900); return; }
+        if (!/\S+@\S+\.\S+/.test(email)) { showStatus('Invalid email.', 0xff9900); return; }
+        if (pass.length < 6) { showStatus('Password min 6 chars.', 0xff9900); return; }
         if (!GD_SERVER) { showStatus('No proxy configured.', 0xff4444); return; }
         showStatus('Registering...', 0xaaddff, 0);
         try {
-            const res = await gdPost('registerGJAccount.php', {
-                userName: user,
-                password: pass,
-                email,
-                gameVersion: 22,
-                binaryVersion: 40,
-            });
+            const res = await gdPost('registerGJAccount.php', { userName: user, password: pass, email, gameVersion: 22, binaryVersion: 40 });
             if (res === '1') {
-                showStatus('Account created! You can now log in.', 0x44ff88, 4000);
+                showStatus('Account created! Check email, then log in.', 0x44ff88, 5000);
                 regUser.clear(); regEmail.clear(); regPass.clear();
-                switchTab(0);
-                loginUser.setValue(user);
+                switchTab(0); loginUser.setValue(user);
             } else {
-                const errors = {
-                    '-1': 'Registration failed.',
-                    '-2': 'Username already taken.',
-                    '-3': 'Email already registered.',
-                    '-4': 'Username too short (min 3 chars).',
-                    '-9': 'Invalid email address.',
-                };
-                showStatus(errors[res] || `Error code: ${res}`, 0xff4444);
+                const errs = { '-1':'Failed.', '-2':'Username taken.', '-3':'Email already used.', '-4':'Username too short.', '-9':'Invalid email.' };
+                showStatus(errs[res] || 'Error: ' + res, 0xff4444);
             }
-        } catch (e) {
-            showStatus('Error: ' + e.message, 0xff4444);
-        }
-    };
+        } catch(e) { showStatus('Error: ' + e.message, 0xff4444); }
+    });
 
-    const registerBtn = makeBtn(cx, cy + 110, 'Register', doRegister);
-
-    // ── LOGGED-IN view ────────────────────────────────────────────────────────
+    // ── LOGGED IN view ────────────────────────────────────────────────────────
     const buildLoggedIn = () => {
-        loginContainer.setVisible(false);
-        registerContainer.setVisible(false);
-        tabBtns.forEach(t => t.grp.setVisible(false));
+        loginCon.setVisible(false);
+        regCon.setVisible(false);
+        tabRow.setVisible(false);
         loginBtn.setVisible(false);
-        registerBtn.setVisible(false);
-        loggedContainer.setVisible(true);
-        loggedContainer.removeAll(true);
-
-        const user = savedUser();
-        const aid  = savedAID();
-
-        loggedContainer.add(
-            this.add.bitmapText(cx, cy - 60, 'bigFont', user, 44).setOrigin(0.5)
-        );
-        loggedContainer.add(
-            this.add.bitmapText(cx, cy - 10, 'bigFont', `Account ID: ${aid}`, 22).setOrigin(0.5).setTint(0xaaddff)
-        );
-
-        const logoutBtn = makeBtn(cx - 130, cy + 80, 'Logout', () => {
-            localStorage.removeItem('gd_userName');
-            localStorage.removeItem('gd_accountID');
-            localStorage.removeItem('gd_playerID');
-            localStorage.removeItem('gd_gjp2');
+        regBtn.setVisible(false);
+        loggedCon.setVisible(true);
+        loggedCon.removeAll(true);
+        loggedCon.add(this.add.bitmapText(cx, cy - 40, 'bigFont', savedUser(), 44).setOrigin(0.5));
+        loggedCon.add(this.add.bitmapText(cx, cy + 10, 'bigFont', 'Account ID: ' + savedAID(), 22).setOrigin(0.5).setTint(0xaaddff));
+        const outBtn = makeBtn(cx, cy + 80, 'Logout', () => {
+            ['gd_userName','gd_accountID','gd_playerID','gd_gjp2'].forEach(k => localStorage.removeItem(k));
             showStatus('Logged out.', 0xffffff, 2000);
-            loggedContainer.setVisible(false);
-            tabBtns.forEach(t => t.grp.setVisible(true));
+            loggedCon.setVisible(false);
+            tabRow.setVisible(true);
             loginBtn.setVisible(true);
-            registerBtn.setVisible(false);
+            regBtn.setVisible(false);
             switchTab(0);
-        }, 0xffffff);
-        loggedContainer.add(logoutBtn);
+        });
+        loggedCon.add(outBtn);
     };
 
-    // ── tab switcher ──────────────────────────────────────────────────────────
+    // ── tab row ───────────────────────────────────────────────────────────────
+    const tabRow = this.add.container(0, 0).setScrollFactor(0).setDepth(302);
+    popup.add(tabRow);
+    let activeTab = 0;
+    const tabLabels = ['Login', 'Register'];
+    const tabGrps = tabLabels.map((name, i) => {
+        const tx = cx + (i - 0.5) * (TAB_W + 20);
+        const ty = cy - PH / 2 + 100;
+        const grp = this.add.container(tx, ty).setScrollFactor(0).setDepth(302);
+        const isAct = i === 0;
+        grp.add(this._drawScale9(0, 0, TAB_W, TAB_H, 'GJ_button01', btnBorder, isAct ? 0xffffff : 0x666666, 1));
+        const lbl = this.add.bitmapText(0, -3, 'goldFont', name, 30).setOrigin(0.5, 0.5);
+        if (!isAct) lbl.setTint(0x888888);
+        grp.add(lbl);
+        const hz = this.add.zone(0, 0, TAB_W, TAB_H).setInteractive();
+        grp.add(hz);
+        hz.on('pointerup', () => switchTab(i));
+        tabRow.add(grp);
+        return { grp, lbl };
+    });
+
     const switchTab = (idx) => {
         activeTab = idx;
-        tabBtns.forEach(({ grp, lbl }, i) => {
-            const active = i === idx;
-            // re-tint the 9-slice bg
-            grp.getAt(0).list?.forEach(child => {
-                if (child.setTint) child.setTint(active ? 0xffffff : 0x666666);
-            });
-            lbl.setTint(active ? 0xffffff : 0x888888);
+        tabGrps.forEach(({ grp, lbl }, i) => {
+            const act = i === idx;
+            lbl.setTint(act ? 0xffffff : 0x888888);
         });
-        loginContainer.setVisible(idx === 0);
-        registerContainer.setVisible(idx === 1);
+        loginCon.setVisible(idx === 0);
+        regCon.setVisible(idx === 1);
         loginBtn.setVisible(idx === 0);
-        registerBtn.setVisible(idx === 1);
-        // show/hide HTML inputs per tab
-        loginUser.el.style.display = idx === 0 ? '' : 'none';
-        loginPass.el.style.display = idx === 0 ? '' : 'none';
-        regUser.el.style.display   = idx === 1 ? '' : 'none';
-        regEmail.el.style.display  = idx === 1 ? '' : 'none';
-        regPass.el.style.display   = idx === 1 ? '' : 'none';
+        regBtn.setVisible(idx === 1);
         statusTxt.setText('');
+        if (_focusedField) _focusedField._blur();
     };
 
-    // login tab: inputs are already created outside containers so they're always accessible
-    loginContainer.add(this.add.bitmapText(cx, fieldY1 - 28, 'bigFont', 'Username', 20).setOrigin(0.5).setTint(0xdddddd));
-    loginContainer.add(this.add.bitmapText(cx, fieldY2 - 28, 'bigFont', 'Password', 20).setOrigin(0.5).setTint(0xdddddd));
-
-    registerContainer.add(this.add.bitmapText(cx, rY1 - 28, 'bigFont', 'Username', 20).setOrigin(0.5).setTint(0xdddddd));
-    registerContainer.add(this.add.bitmapText(cx, rY2 - 28, 'bigFont', 'Email',    20).setOrigin(0.5).setTint(0xdddddd));
-    registerContainer.add(this.add.bitmapText(cx, rY3 - 28, 'bigFont', 'Password', 20).setOrigin(0.5).setTint(0xdddddd));
-
     // ── initial state ─────────────────────────────────────────────────────────
-    loggedContainer.setVisible(false);
+    loggedCon.setVisible(false);
     if (savedUser() && savedAID() && savedGJP()) {
         buildLoggedIn();
     } else {
         switchTab(0);
     }
-}
+  }
 }
