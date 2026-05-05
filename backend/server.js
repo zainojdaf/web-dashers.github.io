@@ -57,11 +57,16 @@ app.post('/downloadGJLevel22.php', async (req, res) => {
   try {
     const response = await fetch('https://www.boomlings.com/database/downloadGJLevel22.php', {
       method: 'POST',
-      body: new URLSearchParams(req.body)
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0'
+      },
+      body: new URLSearchParams(req.body).toString()
     });
 
     const text = await response.text();
     res.send(text);
+
   } catch (err) {
     console.error(err);
     res.status(500).send('proxy error');
