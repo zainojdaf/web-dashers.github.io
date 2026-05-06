@@ -18,10 +18,13 @@ window.ApiWrapper = class ApiWrapper {
 	}
 	static async downloadSong(id) {
 		let data = `songID=${id}&secret=Wmfd2893gb7`;
-		let response = await safeFetch(window._gdProxyUrl + "/getGJSongInfo.php", {
-			method: "POST",
-			body: data
-		}, "Failed to fetch song info from server.");
+	let response = await safeFetch(window._gdProxyUrl + "/getGJSongInfo.php", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  body: data
+}, "Failed to fetch song info from server.");
 		let text = await response.text();
 		let url = decodeURIComponent(text?.split("~|~10~|~")[1]?.split("~|~")[0]);
 		let audioresponse = await safeFetch(url, {}, "Failed to fetch song audio.");
@@ -36,10 +39,13 @@ window.ApiWrapper = class ApiWrapper {
 	static async downloadLevel(id) {
 		console.log("DOWNLOAD LEVEL CALLED WITH ID:", id);
 		let data = `levelID=${id}&inc=1&extras=1&secret=Wmfd2893gb7`;
-		let response = await safeFetch(window._gdProxyUrl + "/downloadGJLevel22.php", {
-			method: "POST",
-			body: data
-		}, "Failed to fetch level data from server.");
+	let response = await safeFetch(window._gdProxyUrl + "/downloadGJLevel22.php", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  body: data
+}, "Failed to fetch level data from server.");
 		let text = await response.text();
 		console.log("LEVEL RAW:", text);
 
