@@ -1,5 +1,4 @@
 window.ApiWrapper = class ApiWrapper {
-	static proxyurl = "https://proxy.corsfix.com/?"
 	static setProxy(string) {
 		this.proxyurl = string
 	}
@@ -14,12 +13,12 @@ window.ApiWrapper = class ApiWrapper {
 		});
 		let text = await response.text();
 		let url = decodeURIComponent(text?.split("~|~10~|~")[1]?.split("~|~")[0]);
-		let audioresponse = await fetch(this.proxyurl + url);
+		let audioresponse = await fetch(url);
 		let blob = await audioresponse.blob();
 		return window.URL.createObjectURL(blob);
 	}
     static async downloadSfx(id){
-		let audioresponse = await fetch(this.proxyurl + "https://geometrydashfiles.b-cdn.net/sfx/s"+id+".ogg");
+		let audioresponse = await fetch("https://geometrydashfiles.b-cdn.net/sfx/s"+id+".ogg");
 		let blob = await audioresponse.blob();
 		return window.URL.createObjectURL(blob);
     }
