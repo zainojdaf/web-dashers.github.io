@@ -1,3 +1,4 @@
+const fetch = require('node-fetch');
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -88,10 +89,16 @@ const response = await fetch('https://www.boomlings.com/database/downloadGJLevel
 // OPTIONAL (you’ll probably need this next for search)
 app.post('/getGJLevels21.php', async (req, res) => {
   try {
-    const response = await fetch('https://www.boomlings.com/database/getGJLevels21.php', {
-      method: 'POST',
-      body: new URLSearchParams(req.body)
-    });
+    
+const response = await fetch('https://www.boomlings.com/database/getGJLevels21.php', {
+ method: 'POST',
+ headers: {
+   'Content-Type': 'application/x-www-form-urlencoded',
+   'User-Agent': 'Mozilla/5.0',
+   'Accept': '*/*'
+ },
+ body: new URLSearchParams(req.body)
+});
 
     const text = await response.text();
     res.send(text);
