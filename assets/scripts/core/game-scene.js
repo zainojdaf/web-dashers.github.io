@@ -538,8 +538,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           return;
         }
        const formBody = `levelID=${levelId}&inc=1&extras=1&secret=Wmfd2893gb7`;
-       const res = await fetch(
-  `https://corsproxy.io/?https://www.boomlings.com/database/downloadGJLevel22.php`,
+const res = await fetch(
+  `https://api.allorigins.win/raw?url=${encodeURIComponent("https://www.boomlings.com/database/downloadGJLevel22.php")}`,
   {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
