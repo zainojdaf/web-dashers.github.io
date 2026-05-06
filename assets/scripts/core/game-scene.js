@@ -544,7 +544,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           body: formBody
         });
         if (!res.ok) throw new Error(`Proxy returned ${res.status}`);
+
 const rawResponse = await res.text();
+alert("STATUS: " + res.status);
+alert("TEXT: " + rawResponse);
 alert("RAW: " + rawResponse);
 
 if (!rawResponse || rawResponse.trim() === "-1" || !rawResponse.includes(":")) {
