@@ -62,19 +62,16 @@ app.post('/loginGJAccount.php', (req, res) => {
 
 app.post('/downloadGJLevel22.php', async (req, res) => {
   try {
-    const params = new URLSearchParams();
-    for (const key in req.body) {
-      params.append(key, req.body[key]);
-    }
+    const levelID = req.body.levelID;
 
-const response = await fetch('https://www.boomlings.com/database/downloadGJLevel22.php', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'User-Agent': 'Mozilla/5.0',
-    'Accept': '*/*'
-  },
-  body: new URLSearchParams(req.body)
+    const response = await fetch(`https://gdbrowser.com/api/level/${levelID}`);
+    const text = await response.text();
+
+    res.send(text);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('proxy error');
+  }
 });
 
     const text = await response.text();
