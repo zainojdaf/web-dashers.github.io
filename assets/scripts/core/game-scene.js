@@ -551,7 +551,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           return;
         }
         if (!res.ok) {
-          _showStatus(`Server error: ${res.status}. Please try again later.", "#ff0000");
+          _showStatus(`Server error: ${res.status}. Please try again later.`, "#ff0000");
           return;
         }
         try {
