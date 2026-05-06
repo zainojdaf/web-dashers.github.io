@@ -544,20 +544,31 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           body: formBody
         });
         if (!res.ok) throw new Error(`Proxy returned ${res.status}`);
-        const rawResponse = await res.text();
-        if (!rawResponse || rawResponse === "-1" || !rawResponse.includes(":")) {
-          _showStatus("level not found from servers. check the id and try again.", "#ff0000");
-          return;
-        }
-        const gdMap = {};
-        const _gdMatches = [...rawResponse.matchAll(/(?:^|:)(\d+):/g)];
-        for (let i = 0; i < _gdMatches.length; i++) {
-          const valueStart = _gdMatches[i].index + _gdMatches[i][0].length;
-          const valueEnd   = i + 1 < _gdMatches.length ? _gdMatches[i + 1].index : rawResponse.length;
-          gdMap[_gdMatches[i][1]] = rawResponse.slice(valueStart, valueEnd);
-        }
-        const levelString   = gdMap["4"] || null;
-        const levelName     = gdMap["2"] || "Online Level";
+const rawResponse = await res.text();
+
+if (!rawResponse || rawResponse.trim() === "-1" || !rawResponse.includes(":")) {
+  _showStatus("level not found from servers. check the id and try again.", "#ff0000");
+  return;
+}
+
+// 1️⃣ fill gdMap FIRST
+const gdMap = {};
+const _gdMatches = [...rawResponse.matchAll(/(?:^|:)(\d+):/g)];
+
+for (let i = 0; i < _gdMatches.length; i++) {
+  const valueStart = _gdMatches[i].index + _gdMatches[i][0].length;
+  const valueEnd   = i + 1 < _gdMatches.length ? _gdMatches[i + 1].index : rawResponse.length;
+  gdMap[_gdMatches[i][1]] = rawResponse.slice(valueStart, valueEnd);
+}
+
+// 2️⃣ THEN read values
+const levelString = gdMap["4"];
+if (!levelString) {
+  _showStatus("level data is empty or invalid.", "#ff0000");
+  return;
+}
+
+const levelName = (gdMap["2"] || "Online Level").trim();
         const levelIdParsed = gdMap["1"] || levelId;
         const songIdRaw     = (gdMap["35"] || "").trim();
         const isCustomSong  = !!songIdRaw && songIdRaw !== "0";
