@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
+const path = require('path');
 
 let fetchFn;
 if (typeof globalThis.fetch === 'function') {
@@ -16,6 +17,9 @@ if (typeof globalThis.fetch === 'function') {
 const fetch = fetchFn;
 
 const app = express();
+
+const FRONTEND_ROOT = path.join(__dirname, '..');
+app.use(express.static(FRONTEND_ROOT, { index: false }));
 
 app.use(cors({
   origin: "*",
