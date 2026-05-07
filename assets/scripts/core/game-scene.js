@@ -122,6 +122,38 @@ class GameScene extends Phaser.Scene {
       },
       _v: -centerX
     };
+    const getProxyCandidates = () => {
+      const candidates = [];
+      if (window._gdProxyUrl) {
+        candidates.push(window._gdProxyUrl.replace(/\/$/, ""));
+      }
+      if (Array.isArray(window._gdFallbackProxyUrls)) {
+        for (const url of window._gdFallbackProxyUrls) {
+          if (url) candidates.push(url.replace(/\/$/, ""));
+        }
+      }
+      return [...new Set(candidates)];
+    };
+    const fetchWithProxy = async (path, options) => {
+      const proxies = getProxyCandidates();
+      if (!proxies.length) {
+        throw new Error("No proxy configured.");
+      }
+      let lastError = new Error("No proxy configured.");
+      for (const proxy of proxies) {
+        const url = proxy + path;
+        try {
+          const res = await fetch(url, options);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status} ${res.statusText}`);
+          }
+          return res;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      throw lastError;
+    };
     this._state = new PlayerState();
     this._level = new window.LevelObject(this, this._cameraXRef);
     this._orbGfx = null;
@@ -435,6 +467,13 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         overlay.fillStyle(bandColor, 1);
         overlay.fillRect(0, bandY, sw, bandH);
       }
+      // Add rounded top panel
+      const panelHeight = 200;
+      const panelY = 50;
+      overlay.fillStyle(0x000000, 0.9);
+      overlay.fillRoundedRect(20, panelY, sw - 40, panelHeight, 20);
+      overlay.lineStyle(3, 0xffffff, 0.3);
+      overlay.strokeRoundedRect(20, panelY, sw - 40, panelHeight, 20);
       this._searchOverlay = overlay;
       const blocker = this.add.zone(sw / 2, sh / 2, sw, sh).setScrollFactor(0).setDepth(101).setInteractive();
       const backBtn = this.add.image(50, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png")
@@ -444,7 +483,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const inputW = 320;
       const inputH = 44;
       const inputX = sw / 2 - inputW / 2;
-      const inputY = sh / 2 - inputH / 2;
+      const inputY = panelY + 80;
       const inputBg = this.add.graphics().setScrollFactor(0).setDepth(104);
       inputBg.fillStyle(0x000000, 0.5);
       inputBg.fillRoundedRect(inputX, inputY, inputW, inputH, 8);
@@ -475,7 +514,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       `;
       document.body.appendChild(htmlInput);
       setTimeout(() => htmlInput.focus(), 50);
-      const placeholderLabel = this.add.bitmapText(sw / 2, inputY + inputH / 2, "bigFont", "Enter a level, user or ID", 18)
+      const titleLabel = this.add.bitmapText(sw / 2, panelY + 30, "bigFont", "Search by Level ID", 24)
+        .setScrollFactor(0).setDepth(105).setOrigin(0.5, 0.5).setTint(0xffffff);
+      const placeholderLabel = this.add.bitmapText(sw / 2, inputY + inputH / 2, "bigFont", "Enter level ID", 18)
         .setScrollFactor(0).setDepth(105).setOrigin(0.5, 0.5).setTint(0xaaddff);
       const typedLabel = this.add.bitmapText(sw / 2, inputY + inputH / 2, "bigFont", "", 18)
         .setScrollFactor(0).setDepth(105).setOrigin(0.5, 0.5).setTint(0xffffff);
@@ -497,14 +538,41 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         htmlInput.style.fontSize = `${Math.round(20 * sy)}px`;
       };
       window.addEventListener("resize", _repositionInput);
-      const statusText = this.add.text(sw / 2, inputY + inputH + 22, "", {
+
+      const buttonY = panelY + panelHeight + 20;
+      const playBtn = this.add.container(sw / 2 - 100, buttonY).setScrollFactor(0).setDepth(105);
+      const playBtnBg = this.add.rectangle(0, 0, 160, 48, 0x222222, 0.8).setOrigin(0.5);
+      const playBtnLabel = this.add.bitmapText(0, 0, "goldFont", "Play Level", 20).setOrigin(0.5);
+      playBtn.add([playBtnBg, playBtnLabel]);
+      playBtn.setSize(160, 48);
+      playBtn.setInteractive({ useHandCursor: true });
+      playBtn.on("pointerup", () => _doSearch());
+
+      const demonBtn = this.add.container(sw / 2 + 120, buttonY).setScrollFactor(0).setDepth(105);
+      const demonBtnBg = this.add.rectangle(0, 0, 160, 48, 0x222222, 0.8).setOrigin(0.5);
+      const demonBtnLabel = this.add.bitmapText(10, 0, "goldFont", "Demon List", 20).setOrigin(0, 0.5);
+      demonBtn.add([demonBtnBg, demonBtnLabel]);
+      demonBtn.setSize(160, 48);
+      demonBtn.setInteractive({ useHandCursor: true });
+      demonBtn.on("pointerup", () => window.open("https://webdemonlist.org/", "_blank"));
+      // Load the demon icon from the website
+      this.load.image('webDemonIcon', 'https://webdemonlist.org/assets/icon.png');
+      this.load.once('filecomplete', (key) => {
+        if (key === 'webDemonIcon') {
+          const demonIcon = this.add.image(-60, 0, 'webDemonIcon').setScale(0.5);
+          demonBtn.add(demonIcon);
+        }
+      });
+      this.load.start();
+
+      const statusText = this.add.text(sw / 2, buttonY + 50, "", {
         fontSize: "16px",
         fontFamily: "Arial, sans-serif",
         color: "#ffffff",
         align: "center",
         wordWrap: { width: 420 }
       }).setScrollFactor(0).setDepth(106).setOrigin(0.5, 0).setAlpha(0);
-      this._searchOverlayObjects.push(statusText);
+      this._searchOverlayObjects.push(titleLabel, statusText, playBtn, demonBtn);
       const _showStatus = (msg, color = "#ffffff", duration = 0) => {
         statusText.setText(msg);
         statusText.setColor(color);
@@ -533,15 +601,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         _showStatus("fetching level", "#ffb700");
 
 
-        const PROXY_BASE = (window._gdProxyUrl || "").replace(/\/$/, "");
-        if (!PROXY_BASE) {
-          _showStatus("No server proxy configured. Please try again later.", "#ff0000");
-          return;
-        }
         const formBody = `levelID=${levelId}&inc=1&extras=1&secret=Wmfd2893gb7`;
         let res, rawResponse;
         try {
-          res = await fetch(`${PROXY_BASE}/downloadGJLevel22.php`, {
+          res = await fetchWithProxy("/downloadGJLevel22.php", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: formBody
@@ -583,8 +646,9 @@ if (!levelString) {
 }
 
 const levelName = (gdMap["2"] || "Online Level").trim();
-        const levelIdParsed = gdMap["1"] || levelId;
-        const songIdRaw     = (gdMap["35"] || "").trim();
+const levelIdParsed = gdMap["1"] || levelId;
+window._onlineLevelStars = parseInt(gdMap["19"] || "0");
+const songIdRaw     = (gdMap["35"] || "").trim();
         const isCustomSong  = !!songIdRaw && songIdRaw !== "0";
         const officialSongId = gdMap["12"] || "0";
         const songKey = isCustomSong ? `ng_song_${songIdRaw}` : window.allLevels[officialSongId][0];
@@ -657,7 +721,7 @@ const levelName = (gdMap["2"] || "Online Level").trim();
         });
       };
       this._searchOverlayObjects = [
-        overlay, blocker, backBtn, inputBg, statusText, placeholderLabel, typedLabel
+        overlay, blocker, backBtn, inputBg, titleLabel, statusText, placeholderLabel, typedLabel, playBtn, demonBtn
       ];
       if (window.levelID) { // if there's an ID parameter, load it directly
         htmlInput.remove();
@@ -737,6 +801,29 @@ const levelName = (gdMap["2"] || "Online Level").trim();
         this._iconBtn.setScale(1);
         this.tweens.add({
           targets: this._iconBtn,
+          y: 324,
+          duration: 750,
+          ease: "Quad.InOut",
+          yoyo: true,
+          repeat: -1
+        });
+      }
+    }, () => this._menuActive && !this._levelSelectOverlay);
+
+    this._accountBtn = this.add.container(0, 0).setScrollFactor(0).setDepth(30);
+    const accountBtnBg = this.add.rectangle(0, 0, 100, 52, 0xffffff, 0.12).setOrigin(0.5);
+    const accountBtnLabel = this.add.bitmapText(0, 0, "goldFont", "Account", 20).setOrigin(0.5, 0.5);
+    this._accountBtn.add([accountBtnBg, accountBtnLabel]);
+    this._accountBtn.setInteractive(new Phaser.Geom.Rectangle(-50, -26, 100, 52), Phaser.Geom.Rectangle.Contains);
+    this._accountBtnSelected = false;
+    this._makeBouncyButton(this._accountBtn, 1, () => {
+      this._openAccountMenu();
+      if (this._accountBtn) {
+        this.tweens.killTweensOf(this._accountBtn);
+        this._accountBtn.y = 320;
+        this._accountBtn.setScale(1);
+        this.tweens.add({
+          targets: this._accountBtn,
           y: 324,
           duration: 750,
           ease: "Quad.InOut",
@@ -2949,6 +3036,183 @@ _buildSettingsPopup() {
       this._featuredInfoPopup = null;
     }
   }
+  _openAccountMenu() {
+    this._buildAccountInfoPopup();
+  }
+  _buildAccountInfoPopup() {
+    if (this._accountInfoPopup) return;
+    const xPos = screenWidth / 2;
+    const centerY = screenHeight / 2;
+    this._accountInfoPopup = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
+    const background = this.add.rectangle(xPos, centerY, screenWidth, screenHeight, 0, 100 / 255);
+    background.setInteractive();
+    this._accountInfoPopup.add(background);
+    const bounceContainer = this.add.container(xPos, centerY).setScale(0);
+    this._accountInfoPopup.add(bounceContainer);
+    const cornerRadius = this.textures.get("square01_001").source[0].width * 0.325;
+    const panelBg = this._drawScale9(0, 0, 560, 300, "square01_001", cornerRadius, 16777215, 1);
+    bounceContainer.add(panelBg);
+    const title = this.add.bitmapText(0, -98, "goldFont", "Account", 42).setOrigin(0.5, 0.5);
+    bounceContainer.add(title);
+    // Add HTML inputs
+    const inputW = 300;
+    const inputH = 40;
+    const inputY1 = -50;
+    const inputY2 = 0;
+    const inputX = xPos - inputW / 2;
+    const inputBg1 = this.add.graphics().setScrollFactor(0).setDepth(1001);
+    inputBg1.fillStyle(0x000000, 0.5);
+    inputBg1.fillRoundedRect(inputX, centerY + inputY1, inputW, inputH, 8);
+    inputBg1.lineStyle(2, 0xffffff, 0.4);
+    bounceContainer.add(inputBg1);
+    const inputBg2 = this.add.graphics().setScrollFactor(0).setDepth(1001);
+    inputBg2.fillStyle(0x000000, 0.5);
+    inputBg2.fillRoundedRect(inputX, centerY + inputY2, inputW, inputH, 8);
+    inputBg2.lineStyle(2, 0xffffff, 0.4);
+    bounceContainer.add(inputBg2);
+    const htmlInput1 = document.createElement("input");
+    htmlInput1.type = "text";
+    htmlInput1.placeholder = "Account ID";
+    htmlInput1.maxLength = 20;
+    htmlInput1.style.cssText = `
+      position: fixed;
+      left: ${inputX}px;
+      top: ${centerY + inputY1}px;
+      width: ${inputW}px;
+      height: ${inputH}px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ffffff;
+      font-size: 18px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      z-index: 9999;
+      caret-color: #ffffff;
+    `;
+    document.body.appendChild(htmlInput1);
+    const htmlInput2 = document.createElement("input");
+    htmlInput2.type = "password";
+    htmlInput2.placeholder = "GJP";
+    htmlInput2.maxLength = 50;
+    htmlInput2.style.cssText = `
+      position: fixed;
+      left: ${inputX}px;
+      top: ${centerY + inputY2}px;
+      width: ${inputW}px;
+      height: ${inputH}px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ffffff;
+      font-size: 18px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      z-index: 9999;
+      caret-color: #ffffff;
+    `;
+    document.body.appendChild(htmlInput2);
+    // Labels
+    const label1 = this.add.bitmapText(xPos, centerY + inputY1 - 25, "bigFont", "Account ID", 20).setOrigin(0.5).setTint(0xffffff);
+    bounceContainer.add(label1);
+    const label2 = this.add.bitmapText(xPos, centerY + inputY2 - 25, "bigFont", "GJP", 20).setOrigin(0.5).setTint(0xffffff);
+    bounceContainer.add(label2);
+    // Login button
+    const loginBtn = this.add.container(xPos, centerY + 60).setScrollFactor(0).setDepth(1001);
+    const loginBg = this.add.rectangle(0, 0, 120, 40, 0x222222, 0.8).setOrigin(0.5);
+    const loginLabel = this.add.bitmapText(0, 0, "goldFont", "Login", 24).setOrigin(0.5);
+    loginBtn.add([loginBg, loginLabel]);
+    loginBtn.setSize(120, 40);
+    loginBtn.setInteractive({ useHandCursor: true });
+    bounceContainer.add(loginBtn);
+    // Info display
+    const infoText = this.add.text(xPos, centerY + 120, "", {
+      fontSize: "16px",
+      fontFamily: "Arial, sans-serif",
+      color: "#ffffff",
+      align: "center"
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(1001);
+    bounceContainer.add(infoText);
+    // Load stored
+    const storedAccountID = localStorage.getItem("gd_accountID");
+    const storedGJP = localStorage.getItem("gd_gjp");
+    if (storedAccountID && storedGJP) {
+      htmlInput1.value = storedAccountID;
+      htmlInput2.value = storedGJP;
+      // Auto fetch
+      fetchUserInfo(storedAccountID, storedGJP);
+    }
+    const fetchUserInfo = async (accountID, gjp) => {
+      try {
+        const res = await fetchWithProxy("/getGJUserInfo.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `accountID=${accountID}&gjp=${gjp}&secret=Wmfd2893gb7`
+        });
+        const data = await res.text();
+        if (data === "-1") {
+          infoText.setText("Invalid credentials");
+          return;
+        }
+        const parts = data.split(":");
+        const userMap = {};
+        for (let i = 0; i < parts.length; i += 2) {
+          userMap[parts[i]] = parts[i + 1];
+        }
+        const userName = userMap["1"];
+        const stars = userMap["3"];
+        const demons = userMap["4"];
+        const accountID2 = userMap["16"];
+        const icon = userMap["21"];
+        const color1 = userMap["10"];
+        const color2 = userMap["11"];
+        infoText.setText(`Name: ${userName}\nStars: ${stars}\nDemons: ${demons}\nAccount ID: ${accountID2}\nIcon: ${icon}\nColors: ${color1}, ${color2}`);
+      } catch (err) {
+        infoText.setText("Error fetching user info");
+      }
+    };
+    loginBtn.on("pointerup", () => {
+      const accountID = htmlInput1.value.trim();
+      const gjp = htmlInput2.value.trim();
+      if (!accountID || !gjp) {
+        infoText.setText("Enter Account ID and GJP");
+        return;
+      }
+      localStorage.setItem("gd_accountID", accountID);
+      localStorage.setItem("gd_gjp", gjp);
+      fetchUserInfo(accountID, gjp);
+    });
+    // Close function needs to remove inputs
+    this._accountInfoPopup._htmlInputs = [htmlInput1, htmlInput2];
+    const okGroup = this.add.container(-5, 95);
+    const okBtnW = 90, okBtnH = 55;
+    const okBtnBorder = this.textures.get("GJ_button01").source[0].width * 0.3;
+    const okBtn9 = this._drawScale9(0, 0, okBtnW, okBtnH, "GJ_button01", okBtnBorder, 0xffffff, 1);
+    const okBtn = this.add.rectangle(0, 0, okBtnW, okBtnH).setInteractive();
+    okGroup.add(okBtn9);
+    okGroup.add(okBtn);
+    const okLabel = this.add.bitmapText(-3, -4, "goldFont", "OK", 44).setOrigin(0.5, 0.5);
+    okGroup.add(okLabel);
+    bounceContainer.add(okGroup);
+    okBtn.on("pointerdown", () => { okGroup._pressed = true; this.tweens.killTweensOf(okGroup); this.tweens.add({ targets: okGroup, scaleX: 1.26, scaleY: 1.26, duration: 300, ease: "Bounce.Out" }); });
+    okBtn.on("pointerout", () => { if (okGroup._pressed) { okGroup._pressed = false; this.tweens.killTweensOf(okGroup); this.tweens.add({ targets: okGroup, scaleX: 1, scaleY: 1, duration: 400, ease: "Bounce.Out" }); } });
+    okBtn.on("pointerup", () => { if (okGroup._pressed) { okGroup._pressed = false; this.tweens.killTweensOf(okGroup); okGroup.setScale(1); this._closeAccountInfoPopup(); } });
+    this.tweens.add({
+      targets: bounceContainer,
+      scale: { from: 0, to: 1 },
+      duration: 500,
+      ease: "Bounce.Out"
+    });
+  }
+  _closeAccountInfoPopup() {
+    if (this._accountInfoPopup) {
+      if (this._accountInfoPopup._htmlInputs) {
+        this._accountInfoPopup._htmlInputs.forEach(input => input.remove());
+      }
+      this._accountInfoPopup.destroy();
+      this._accountInfoPopup = null;
+    }
+  }
   _expandHitArea(_0x122213, _0x37180a) {
     const _0x46ea45 = _0x122213.width;
     const _0x43b461 = _0x122213.height;
@@ -3164,6 +3428,21 @@ _buildSettingsPopup() {
     onComplete: () => {
       this._iconBtn.destroy();
       this._iconBtn = null;
+    }
+  });
+}
+    //account stuff
+    if (this._accountBtn) {
+  this._closeAccountInfoPopup && this._closeAccountInfoPopup();
+  this.tweens.killTweensOf(this._accountBtn);
+  this.tweens.add({
+    targets: this._accountBtn,
+    scale: 0.01,
+    duration: 200,
+    ease: "Quad.In",
+    onComplete: () => {
+      this._accountBtn.destroy();
+      this._accountBtn = null;
     }
   });
 }
@@ -3404,6 +3683,19 @@ _buildSettingsPopup() {
       this._iconBtn.y = 320;
       this.tweens.add({
         targets: this._iconBtn,
+        y: 324,
+        duration: 750,
+        ease: "Quad.InOut",
+        yoyo: true,
+        repeat: -1
+      });
+    }
+    if (this._accountBtn) {
+      this._accountBtn.x = (screenWidth / 2) - this._playBtn.width / 2 - 250;
+      this.tweens.killTweensOf(this._accountBtn, "y");
+      this._accountBtn.y = 320;
+      this.tweens.add({
+        targets: this._accountBtn,
         y: 324,
         duration: 750,
         ease: "Quad.InOut",
@@ -4576,6 +4868,9 @@ _applyMirrorEffect() {
     _0x2be782 = _0x30687e > 0 ? String(_0x30687e).padStart(2, "0") + ":" + String(_0x52f8ee).padStart(2, "0") + ":" + String(_0x2591d0).padStart(2, "0") : String(_0x52f8ee).padStart(2, "0") + ":" + String(_0x2591d0).padStart(2, "0");
     const _0x241209 = _0xe44f6d;
     this._endLayerInternal.add(this.add.bitmapText(containerX, _0xe44f6d, "goldFont", "Time: " + _0x2be782, 40).setOrigin(0.5, 0.5).setScale(_0x45b6e4));
+    _0xe44f6d += 48;
+    const stars = window._onlineLevelStars || 0;
+    this._endLayerInternal.add(this.add.bitmapText(containerX, _0xe44f6d, "goldFont", "Stars: " + stars, 40).setOrigin(0.5, 0.5).setScale(_0x45b6e4));
     const _0x452429 = ["Awesome!", "Good\nJob!", "Well\nDone!", "Impressive!", "Amazing!", "Incredible!", "Skillful!", "Brilliant!", "Not\nbad!", "Warp\nSpeed!", "Challenge\nBreaker!", "Reflex\nMaster!", "I am\nspeechless...", "You are...\nThe One!", "How is this\npossible!?", "You beat\nme..."];
     const _0x165c06 = _0x452429[Math.floor(Math.random() * _0x452429.length)];
     const _0x45540f = 225;
@@ -5069,7 +5364,7 @@ _applyMirrorEffect() {
         }
         showStatus("Logging in...", 0xffff66);
         try {
-          const res = await fetch((window._gdProxyUrl || "") + "/loginGJAccount.php", {
+          const res = await fetchWithProxy("/loginGJAccount.php", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, password })
@@ -5084,7 +5379,7 @@ _applyMirrorEffect() {
             showStatus("Login failed. Check your username and password.", 0xff6666);
           }
         } catch (err) {
-          showStatus("Network error: failed to login.", 0xff6666);
+          showStatus(`Network error: failed to login. ${err.message || ""}`, 0xff6666);
         }
       } else {
         const username = htmlInputs.registerUser.value.trim();
@@ -5101,7 +5396,7 @@ _applyMirrorEffect() {
         }
         showStatus("Registering...", 0xffff66);
         try {
-          const res = await fetch((window._gdProxyUrl || "") + "/registerGJAccount.php", {
+          const res = await fetchWithProxy("/registerGJAccount.php", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, password })
@@ -5118,7 +5413,7 @@ _applyMirrorEffect() {
             showStatus("Registration failed. Try again.", 0xff6666);
           }
         } catch (err) {
-          showStatus("Network error: failed to register.", 0xff6666);
+          showStatus(`Network error: failed to register. ${err.message || ""}`, 0xff6666);
         }
       }
     };
@@ -5680,20 +5975,26 @@ _applyMirrorEffect() {
       try {
         let response = cache[page];
         if (!response) {
-          const PROXY = (window._gdProxyUrl || "").replace(/\/$/, "");
-          if (!PROXY) throw new Error("no proxy configured");
           const body = Object.entries({ secret: "Wmfd2893gb7", page, ...params })
             .map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
           let retryCount = 0;
           const maxRetries = 3;
           let res;
           while (retryCount < maxRetries) {
-            res = await fetch(`${PROXY}/getGJLevels21.php`, {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body
-            });
-            
+            try {
+              res = await fetchWithProxy("/getGJLevels21.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body
+              });
+            } catch (err) {
+              if (retryCount >= maxRetries - 1) {
+                throw err;
+              }
+              retryCount++;
+              await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+              continue;
+            }
             if (res.status === 429) {
               retryCount++;
               if (retryCount >= maxRetries) {
@@ -5965,13 +6266,39 @@ _applyMirrorEffect() {
     const cx = sw / 2, cy = 320;
     const PW = 700, PH = 480;
 
-    const GD_SERVER = (window._gdProxyUrl || '').replace(/\/$/, '');
-    const SECRET    = 'Wmfd2893gb7';
+    const SECRET = 'Wmfd2893gb7';
+    const getAccountProxyCandidates = () => {
+        const candidates = [];
+        if (window._gdProxyUrl) {
+            candidates.push(window._gdProxyUrl.replace(/\/$/, ''));
+        }
+        if (Array.isArray(window._gdFallbackProxyUrls)) {
+            for (const url of window._gdFallbackProxyUrls) {
+                if (url) candidates.push(url.replace(/\/$/, ''));
+            }
+        }
+        return [...new Set(candidates)];
+    };
 
     const gdPost = async (endpoint, params) => {
         const body = new URLSearchParams({ secret: SECRET, ...params });
-        const res  = await fetch(`${GD_SERVER}/${endpoint}`, { method: 'POST', body });
-        return res.text();
+        const proxies = getAccountProxyCandidates();
+        if (!proxies.length) {
+            throw new Error('No proxy configured.');
+        }
+        let lastError;
+        for (const proxy of proxies) {
+            try {
+                const res = await fetch(`${proxy}/${endpoint}`, { method: 'POST', body });
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                return res.text();
+            } catch (err) {
+                lastError = err;
+            }
+        }
+        throw lastError || new Error('Failed to contact proxy.');
     };
 
     const sha1 = async (str) => {
@@ -6132,7 +6459,7 @@ _applyMirrorEffect() {
         const user = loginUser.getValue().trim();
         const pass = loginPass.getValue();
         if (!user || !pass) { showStatus('Fill in all fields.', 0xff9900); return; }
-        if (!GD_SERVER) { showStatus('No proxy configured.', 0xff4444); return; }
+        if (!getAccountProxyCandidates().length) { showStatus('No proxy configured.', 0xff4444); return; }
         showStatus('Logging in...', 0xaaddff, 0);
         try {
             const gjp2 = await sha1(pass + 'mI29fmAnxgTs');
@@ -6163,7 +6490,7 @@ _applyMirrorEffect() {
         if (!user || !email || !pass) { showStatus('Fill in all fields.', 0xff9900); return; }
         if (!/\S+@\S+\.\S+/.test(email)) { showStatus('Invalid email.', 0xff9900); return; }
         if (pass.length < 6) { showStatus('Password min 6 chars.', 0xff9900); return; }
-        if (!GD_SERVER) { showStatus('No proxy configured.', 0xff4444); return; }
+        if (!getAccountProxyCandidates().length) { showStatus('No proxy configured.', 0xff4444); return; }
         showStatus('Registering...', 0xaaddff, 0);
         try {
             const res = await gdPost('registerGJAccount.php', { userName: user, password: pass, email, gameVersion: 22, binaryVersion: 40 });

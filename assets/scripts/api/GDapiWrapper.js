@@ -9,6 +9,39 @@ async function safeFetch(url, options, errorMsg) {
 		throw err;
 	}
 }
+
+function getProxyCandidates() {
+	const candidates = [];
+	if (window._gdProxyUrl) {
+		candidates.push(window._gdProxyUrl.replace(/\/$/, ""));
+	}
+	if (Array.isArray(window._gdFallbackProxyUrls)) {
+		for (const url of window._gdFallbackProxyUrls) {
+			if (url) candidates.push(url.replace(/\/$/, ""));
+		}
+	}
+	return [...new Set(candidates)];
+}
+
+async function proxyFetch(path, options, errorMsg) {
+	const proxies = getProxyCandidates();
+	if (!proxies.length) {
+		throw new Error(errorMsg + " No proxy is configured.");
+	}
+	let lastError;
+	for (const proxy of proxies) {
+		const url = proxy + path;
+		try {
+			const res = await fetch(url, options);
+			if (!res.ok) throw new Error(`${errorMsg} (HTTP ${res.status})`);
+			return res;
+		} catch (err) {
+			lastError = err;
+		}
+	}
+	throw lastError || new Error(errorMsg);
+}
+
 window.ApiWrapper = class ApiWrapper {
 	static setProxy(string) {
 		this.proxyurl = string
@@ -18,7 +51,11 @@ window.ApiWrapper = class ApiWrapper {
 	}
 	static async downloadSong(id) {
 		let data = `songID=${id}&secret=Wmfd2893gb7`;
-	let response = await safeFetch(window._gdProxyUrl + "/getGJSongInfo.php", {
+		const proxy = (window._gdProxyUrl || "").replace(/\/$/, "");
+		if (!proxy) {
+			throw new Error("No song proxy configured.");
+		}
+		let response = await safeFetch(proxy + "/getGJSongInfo.php", {
   method: "POST",
   headers: {
     "Content-Type": "application/x-www-form-urlencoded"
@@ -26,7 +63,7 @@ window.ApiWrapper = class ApiWrapper {
   body: data
 }, "Failed to fetch song info from server.");
 		let text = await response.text();
-		let url = decodeURIComponent(text?.split("~|~10~|~")[1]?.split("~|~")[0]);
+		let url = decodeURIComponent(text?.split("~|~10~|")[1]?.split("~|~")[0]);
 		let audioresponse = await safeFetch(url, {}, "Failed to fetch song audio.");
 		let blob = await audioresponse.blob();
 		return window.URL.createObjectURL(blob);
@@ -39,7 +76,7 @@ window.ApiWrapper = class ApiWrapper {
 	static async downloadLevel(id) {
 		console.log("DOWNLOAD LEVEL CALLED WITH ID:", id);
 		let data = `levelID=${id}&inc=1&extras=1&secret=Wmfd2893gb7`;
-	let response = await safeFetch(window._gdProxyUrl + "/downloadGJLevel22.php", {
+	let response = await proxyFetch("/downloadGJLevel22.php", {
   method: "POST",
   headers: {
     "Content-Type": "application/x-www-form-urlencoded"

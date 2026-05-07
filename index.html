@@ -28,9 +28,15 @@
 	<script src="assets/scripts/utils/cache-manager.js"></script>
 	<script src="assets/scripts/api/GDapiWrapper.js"></script>
 	<!-- worker -->
-	<script>window._gdProxyUrl = "https://web-dashersgithubio-production.up.railway.app";</script>
-	<script>window._gdDirectUrl = window._gdProxyUrl;</script>
-	<script>window._gdLevelProxy = window._gdProxyUrl;</script>
+	<script>
+		window._gdProxyUrl = "https://web-dashersgithubio-production.up.railway.app";
+		window._gdFallbackProxyUrls = [
+			"http://127.0.0.1:8080",
+			"http://localhost:8080"
+		];
+		window._gdDirectUrl = window._gdProxyUrl;
+		window._gdLevelProxy = window._gdProxyUrl;
+	</script>
 	<script defer src="assets/scripts/utils/config.js"></script>
 	<script defer src="assets/scripts/core/triggers.js"></script>
 	<script defer src="assets/scripts/core/level.js?latest"></script>

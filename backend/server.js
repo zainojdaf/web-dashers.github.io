@@ -2,6 +2,19 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 
+let fetchFn;
+if (typeof globalThis.fetch === 'function') {
+  fetchFn = globalThis.fetch;
+} else {
+  try {
+    fetchFn = require('node-fetch');
+  } catch (err) {
+    console.error('Fetch API is unavailable. Install node-fetch or run on Node 18+.', err);
+    fetchFn = null;
+  }
+}
+const fetch = fetchFn;
+
 const app = express();
 
 app.use(cors({
@@ -73,6 +86,7 @@ app.post('/loginGJAccount.php', async (req, res) => {
 
 app.post('/downloadGJLevel22.php', async (req, res) => {
   try {
+    if (!fetch) throw new Error('Fetch API is unavailable on the server.');
     const levelID = req.body.levelID;
     const response = await fetch('https://www.boomlings.com/database/downloadGJLevel22.php', {
   method: 'POST',
@@ -95,7 +109,7 @@ app.post('/downloadGJLevel22.php', async (req, res) => {
 // OPTIONAL (you’ll probably need this next for search)
 app.post('/getGJLevels21.php', async (req, res) => {
   try {
-    
+    if (!fetch) throw new Error('Fetch API is unavailable on the server.');
 const response = await fetch('https://www.boomlings.com/database/getGJLevels21.php', {
  method: 'POST',
  headers: {
@@ -111,6 +125,27 @@ const response = await fetch('https://www.boomlings.com/database/getGJLevels21.p
   } catch (err) {
     console.error(err);
     res.status(500).send('proxy error');
+  }
+});
+
+// USER INFO PROXY
+app.post('/getGJUserInfo.php', async (req, res) => {
+  try {
+    if (!fetch) throw new Error('Fetch API is unavailable on the server.');
+    const response = await fetch('https://www.boomlings.com/database/getGJUserInfo.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': '*/*'
+      },
+      body: new URLSearchParams(req.body)
+    });
+    const text = await response.text();
+    res.send(text);
+  } catch (err) {
+    console.error('Error proxying getGJUserInfo:', err);
+    res.status(500).send('-1');
   }
 });
 
