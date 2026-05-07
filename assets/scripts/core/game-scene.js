@@ -301,6 +301,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._makeBouncyButton(this._menuStatsBtn, 0.8, () => {
       this._showStatsScreen();
     }, () => this._menuActive);
+    this._menuAccountBtn = this.add.image(centerX + 155, screenHeight - 80, "GJ_GameSheet03", "GJ_profileButton_001.png").setScrollFactor(0).setDepth(30).setScale(0.8).setInteractive().setRotation(-Math.PI / 2).setFlipX(true);
+    this._expandHitArea(this._menuAccountBtn, 1.2);
+    this._makeBouncyButton(this._menuAccountBtn, 0.8, () => {
+      this._buildAccountInfoPopup();
+    }, () => this._menuActive && !this._accountInfoPopup);
     this._menuAchievementsBtn = this.add.image(centerX + 22, screenHeight - 80, "GJ_GameSheet03", "GJ_achBtn_001.png").setScrollFactor(0).setDepth(30).setScale(0.8).setInteractive().setTint(0x666666);
     this._expandHitArea(this._menuAchievementsBtn, 1.2);
     this._makeBouncyButton(this._menuAchievementsBtn, 0.8, () => {
@@ -541,29 +546,24 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
 
       const buttonY = panelY + panelHeight + 20;
       const playBtn = this.add.container(sw / 2 - 100, buttonY).setScrollFactor(0).setDepth(105);
-      const playBtnBg = this.add.rectangle(0, 0, 160, 48, 0x222222, 0.8).setOrigin(0.5);
+      const playBtnW = 160, playBtnH = 48;
+      const playBtnBorder = this.textures.get("GJ_button01").source[0].width * 0.3;
+      const playBtn9 = this._drawScale9(0, 0, playBtnW, playBtnH, "GJ_button01", playBtnBorder, 0xffffff, 1);
+      const playBtnRect = this.add.rectangle(0, 0, playBtnW, playBtnH).setInteractive();
       const playBtnLabel = this.add.bitmapText(0, 0, "goldFont", "Play Level", 20).setOrigin(0.5);
-      playBtn.add([playBtnBg, playBtnLabel]);
-      playBtn.setSize(160, 48);
+      playBtn.add([playBtn9, playBtnRect, playBtnLabel]);
+      playBtn.setSize(playBtnW, playBtnH);
       playBtn.setInteractive({ useHandCursor: true });
       playBtn.on("pointerup", () => _doSearch());
 
       const demonBtn = this.add.container(sw / 2 + 120, buttonY).setScrollFactor(0).setDepth(105);
-      const demonBtnBg = this.add.rectangle(0, 0, 160, 48, 0x222222, 0.8).setOrigin(0.5);
+      const demonBtnW = 160, demonBtnH = 48;
+      const demonBtnBorder = this.textures.get("GJ_button01").source[0].width * 0.3;
+      const demonBtn9 = this._drawScale9(0, 0, demonBtnW, demonBtnH, "GJ_button01", demonBtnBorder, 0xffffff, 1);
+      const demonBtnRect = this.add.rectangle(0, 0, demonBtnW, demonBtnH).setInteractive();
       const demonBtnLabel = this.add.bitmapText(10, 0, "goldFont", "Demon List", 20).setOrigin(0, 0.5);
-      demonBtn.add([demonBtnBg, demonBtnLabel]);
-      demonBtn.setSize(160, 48);
-      demonBtn.setInteractive({ useHandCursor: true });
-      demonBtn.on("pointerup", () => window.open("https://webdemonlist.org/", "_blank"));
-      // Load the demon icon from the website
-      this.load.image('webDemonIcon', 'https://webdemonlist.org/assets/icon.png');
-      this.load.once('filecomplete', (key) => {
-        if (key === 'webDemonIcon') {
-          const demonIcon = this.add.image(-60, 0, 'webDemonIcon').setScale(0.5);
-          demonBtn.add(demonIcon);
-        }
-      });
-      this.load.start();
+      const demonIcon = this.add.image(-60, 0, "GJ_GameSheet03", "GJ_demonIcon_001.png").setScale(0.5);
+      demonBtn.add([demonBtn9, demonBtnRect, demonIcon, demonBtnLabel]);
 
       const statusText = this.add.text(sw / 2, buttonY + 50, "", {
         fontSize: "16px",

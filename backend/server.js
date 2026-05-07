@@ -153,6 +153,12 @@ app.post('/getGJUserInfo.php', async (req, res) => {
 app.get('/', (req, res) => {
   res.send('Backend running ✅');
 });
+app.head('/', (req, res) => {
+  res.send('Backend running ✅');
+});
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 
 const PORT = process.env.PORT || 8080;
 
