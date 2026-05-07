@@ -35,7 +35,9 @@ function saveUsers(users) {
 }
 
 // REGISTER
-app.post('/registerGJAccount.php', (req, res) => {
+const bcrypt = require('bcrypt');
+
+app.post('/registerGJAccount.php', async (req, res) => {
   const { username, password } = req.body;
 
   let users = getUsers();
@@ -44,23 +46,25 @@ app.post('/registerGJAccount.php', (req, res) => {
     return res.send('-1');
   }
 
-  users.push({ username, password });
+  const hashed = await bcrypt.hash(password, 10);
+
+  users.push({ username, password: hashed });
   saveUsers(users);
 
   res.send('1');
 });
 
 // LOGIN
-app.post('/loginGJAccount.php', (req, res) => {
+app.post('/loginGJAccount.php', async (req, res) => {
   const { username, password } = req.body;
 
   let users = getUsers();
 
-  const user = users.find(
-    u => u.username === username && u.password === password
-  );
-
+  const user = users.find(u => u.username === username);
   if (!user) return res.send('-1');
+
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) return res.send('-1');
 
   res.send('1');
 });
