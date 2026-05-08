@@ -491,28 +491,25 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const inputX = sw / 2 - inputW / 2;
       const inputY = 50;
       const inputBg = this.add.graphics().setScrollFactor(0).setDepth(104);
-      inputBg.fillStyle(0x000000, 0.4);
+      inputBg.fillStyle(0xffffff, 0.08);
       inputBg.fillRoundedRect(inputX, inputY, inputW, inputH, 8);
-      inputBg.lineStyle(2, 0xffffff, 0.4);
+      inputBg.lineStyle(2, 0xffffff, 0.25);
       const canvas = this.sys.game.canvas;
-      const canvasRect = canvas.getBoundingClientRect();
-      const scaleX = canvasRect.width / sw;
-      const scaleY = canvasRect.height / sh;
       const htmlInput = document.createElement("input");
       htmlInput.type = "text";
       htmlInput.placeholder = "";
       htmlInput.maxLength = 20;
       htmlInput.style.cssText = `
         position: fixed;
-        left: ${canvasRect.left + inputX * scaleX}px;
-        top: ${canvasRect.top + inputY * scaleY}px;
-        width: ${inputW * scaleX}px;
-        height: ${inputH * scaleY}px;
+        left: 0px;
+        top: 0px;
+        width: 0px;
+        height: 0px;
         background: transparent;
         border: none;
         outline: none;
         color: #ffffff;
-        font-size: ${Math.round(20 * scaleY)}px;
+        font-size: 16px;
         font-family: Arial, sans-serif;
         text-align: center;
         z-index: 9999;
@@ -535,7 +532,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       }, () => true);
 
       const inputContainer = this.add.graphics().setScrollFactor(0).setDepth(103);
-      inputContainer.fillStyle(0x000000,0.4);
+      inputContainer.fillStyle(0xffffff, 0.08);
       inputContainer.fillRoundedRect(inputX - 10, inputY - 10, inputW + 145, inputH + 20, 12);
       const titleLabel = this.add.bitmapText(sw / 2, panelY + 30, "bigFont", "Search by Level ID", 24)
         .setScrollFactor(0).setDepth(105).setOrigin(0.5, 0.5).setTint(0xffffff);
@@ -550,36 +547,27 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         placeholderLabel.setVisible(val.length === 0);
         typedLabel.setText(val);
       });
-      const _repositionInput = () => {
-        const r = canvas.getBoundingClientRect();
-        const sx = r.width / sw;
-        const sy = r.height / sh;
-        htmlInput.style.left = `${r.left + inputX * sx}px`;
-        htmlInput.style.top  = `${r.top  + inputY * sy}px`;
+      const updateSearchInputPosition = () => {
+        const rect = canvas.getBoundingClientRect();
+        const sx = rect.width / sw;
+        const sy = rect.height / sh;
+        htmlInput.style.left = `${rect.left + inputX * sx}px`;
+        htmlInput.style.top  = `${rect.top  + inputY * sy}px`;
         htmlInput.style.width  = `${inputW * sx}px`;
         htmlInput.style.height = `${inputH * sy}px`;
         htmlInput.style.fontSize = `${Math.round(20 * sy)}px`;
       };
-      window.addEventListener("resize", _repositionInput);
+      updateSearchInputPosition();
+      window.addEventListener("resize", updateSearchInputPosition);
+      this._searchOverlayObjects.push({ destroy: () => window.removeEventListener("resize", updateSearchInputPosition) });
 
       const buttonY = panelY + panelHeight + 20;
-      const playBtn = this.add.container(sw / 2 - 100, buttonY).setScrollFactor(0).setDepth(105);
-      const playBtnW = 160, playBtnH = 48;
-      const playBtnBorder = this.textures.get("GJ_button01").source[0].width * 0.3;
-      const playBtn9 = this._drawScale9(0, 0, playBtnW, playBtnH, "GJ_button01", playBtnBorder, 0xffffff, 1);
-      const playBtnRect = this.add.rectangle(0, 0, playBtnW, playBtnH).setInteractive();
-      const playBtnLabel = this.add.bitmapText(0, 0, "goldFont", "Play Level", 20).setOrigin(0.5);
-      playBtn.add([playBtn9, playBtnRect, playBtnLabel]);
-      playBtn.setSize(playBtnW, playBtnH);
-      playBtn.setInteractive({ useHandCursor: true });
-      playBtn.on("pointerup", () => _doSearch());
-
       const demonBtn = this.add.container(sw / 2 + 120, buttonY).setScrollFactor(0).setDepth(105);
       const demonBtnW = 160, demonBtnH = 48;
       const demonBtnBorder = this.textures.get("GJ_button01").source[0].width * 0.3;
       const demonBtn9 = this._drawScale9(0, 0, demonBtnW, demonBtnH, "GJ_button01", demonBtnBorder, 0xffffff, 1);
       const demonBtnRect = this.add.rectangle(0, 0, demonBtnW, demonBtnH).setInteractive();
-      const demonBtnLabel = this.add.bitmapText(10, 0, "goldFont", "list", 20).setOrigin(0, 0.5);
+      const demonBtnLabel = this.add.bitmapText(-5, 0, "goldFont", "list", 20).setOrigin(0.5);
       const demonIcon = this.add.image(-40, 0, "GJ_GameSheet03", "GJ_demonIcon_001.png").setScale(0.5);
       demonBtn.add([demonBtn9, demonBtnRect, demonIcon, demonBtnLabel]);
 
@@ -590,7 +578,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         align: "center",
         wordWrap: { width: 420 }
       }).setScrollFactor(0).setDepth(106).setOrigin(0.5, 0).setAlpha(0);
-      this._searchOverlayObjects.push(titleLabel, statusText, playBtn, demonBtn, searchBtn, clearSearchBtn, inputContainer);
+      const creditsLabel = this.add.bitmapText(sw / 2, sh - 32, "bigFont", "Credits: antonfdiaz", 18)
+        .setScrollFactor(0).setDepth(105).setOrigin(0.5).setTint(0xffffff);
+      this._searchOverlayObjects.push(titleLabel, statusText, demonBtn, searchBtn, clearSearchBtn, inputContainer, creditsLabel);
       const _showStatus = (msg, color = "#ffffff", duration = 0) => {
         statusText.setText(msg);
         statusText.setColor(color);
@@ -682,35 +672,82 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           _showStatus("Error reading server response.", "#ff0000");
           return;
         }
-        if (!rawResponse || rawResponse.trim() === "-1" || !rawResponse.includes(":")) {
+        rawResponse = rawResponse.trim();
+        if (!rawResponse || rawResponse === "-1" || !rawResponse.includes(":")) {
           _showStatus("Level not found or blocked by server. Check the ID and try again.", "#ff0000");
           return;
         }
 
-// 1️⃣ fill gdMap FIRST
-const gdMap = {};
-const _gdMatches = [...rawResponse.matchAll(/(?:^|:)(\d+):/g)];
+        const parseGJResponse = (text) => {
+          const map = {};
+          let idx = 0;
+          while (idx < text.length) {
+            const colon = text.indexOf(":", idx);
+            if (colon === -1) break;
+            const key = text.substring(idx, colon);
+            if (!/^\d+$/.test(key)) break;
+            const valueStart = colon + 1;
+            let nextIdx = -1;
+            let searchPos = valueStart;
+            while (searchPos < text.length) {
+              const colonPos = text.indexOf(":", searchPos);
+              if (colonPos === -1) break;
+              const nextColon = text.indexOf(":", colonPos + 1);
+              if (nextColon === -1) break;
+              const candidateKey = text.substring(colonPos + 1, nextColon);
+              if (/^\d+$/.test(candidateKey)) {
+                nextIdx = colonPos;
+                break;
+              }
+              searchPos = colonPos + 1;
+            }
+            if (nextIdx === -1) {
+              map[key] = text.substring(valueStart);
+              break;
+            }
+            map[key] = text.substring(valueStart, nextIdx);
+            idx = nextIdx + 1;
+          }
+          return map;
+        };
 
-for (let i = 0; i < _gdMatches.length; i++) {
-  const valueStart = _gdMatches[i].index + _gdMatches[i][0].length;
-  const valueEnd   = i + 1 < _gdMatches.length ? _gdMatches[i + 1].index : rawResponse.length;
-  gdMap[_gdMatches[i][1]] = rawResponse.slice(valueStart, valueEnd);
-}
+        let gdMap = parseGJResponse(rawResponse);
+        if (!gdMap["4"]) {
+          const fallbackMap = {};
+          const parts = rawResponse.split(":");
+          for (let i = 0; i + 1 < parts.length; i += 2) {
+            fallbackMap[parts[i]] = parts[i + 1];
+          }
+          if (fallbackMap["4"]) {
+            gdMap = fallbackMap;
+          }
+        }
 
-// 2️⃣ THEN read values
-const levelString = gdMap["4"];
-if (!levelString) {
-  _showStatus("Level not found or has invalid data.", "#ff0000");
-  return;
-}
+        const levelString = gdMap["4"];
+        if (!levelString) {
+          _showStatus("Level not found or has invalid data.", "#ff0000");
+          return;
+        }
 
 const levelName = (gdMap["2"] || "Online Level").trim();
 const levelIdParsed = gdMap["1"] || levelId;
 window._onlineLevelStars = parseInt(gdMap["19"] || "0");
 const songIdRaw     = (gdMap["35"] || "").trim();
         const isCustomSong  = !!songIdRaw && songIdRaw !== "0";
-        const officialSongId = gdMap["12"] || "0";
-        const songKey = isCustomSong ? `ng_song_${songIdRaw}` : window.allLevels[officialSongId][0];
+        const officialSongId = parseInt(gdMap["12"], 10);
+        let songKey = null;
+        if (!isCustomSong) {
+          if (!Number.isNaN(officialSongId)) {
+            if (window.allLevels && window.allLevels[officialSongId] && window.allLevels[officialSongId][0]) {
+              songKey = window.allLevels[officialSongId][0];
+            } else if (window.allLevels && window.allLevels[officialSongId - 1] && window.allLevels[officialSongId - 1][0]) {
+              songKey = window.allLevels[officialSongId - 1][0];
+            }
+          }
+        }
+        if (!songKey) {
+          songKey = isCustomSong ? `ng_song_${songIdRaw}` : (window.allLevels && window.allLevels[0] ? window.allLevels[0][0] : "stereo_madness");
+        }
         window.currentlevel[0] = songKey;
         window._onlineSongOffset = parseFloat(gdMap["45"] || "0") || 0;
         _showStatus(`Found "${levelName}"${isCustomSong ? ` — Loading song #${songIdRaw}...` : ""}`, "#00ff00");
@@ -780,7 +817,7 @@ const songIdRaw     = (gdMap["35"] || "").trim();
         });
       };
       this._searchOverlayObjects = [
-        overlay, blocker, backBtn, inputBg, titleLabel, statusText, placeholderLabel, typedLabel, playBtn, demonBtn
+        overlay, blocker, backBtn, inputBg, titleLabel, statusText, placeholderLabel, typedLabel, demonBtn, searchBtn, clearSearchBtn, inputContainer, creditsLabel
       ];
       if (window.levelID) { // if there's an ID parameter, load it directly
         htmlInput.remove();
@@ -3096,7 +3133,13 @@ _buildSettingsPopup() {
     }
   }
   _openAccountMenu() {
-    this._buildAccountInfoPopup();
+    const storedAccountID = localStorage.getItem("gd_accountID");
+    const storedGJP = localStorage.getItem("gd_gjp");
+    if (!storedAccountID || !storedGJP) {
+      this._buildAccountPopup();
+    } else {
+      this._buildAccountInfoPopup();
+    }
   }
   _buildAccountInfoPopup() {
     if (this._accountInfoPopup) return;
@@ -3175,24 +3218,58 @@ _buildSettingsPopup() {
         const color2 = userMap["11"] || "3";
 
         // Display profile
-        const iconImg = this.add.image(-150, -80, "GJ_GameSheetIcons", `player_ball_${icon.padStart(2, '0')}_001.png`).setScale(0.8);
-        bounceContainer.add(iconImg);
+        const headerImg = addImageToScene(this, 0, -130, "GJ_yourProfileTxt_001") ||
+          this.add.bitmapText(0, -130, "goldFont", "Profile", 36).setOrigin(0.5);
+        headerImg && bounceContainer.add(headerImg);
 
-        const nameText = this.add.bitmapText(0, -80, "goldFont", userName, 32).setOrigin(0.5);
+        const iconNames = [
+          window.currentPlayer,
+          window.currentShip,
+          window.currentBall,
+          window.currentWave,
+          window.currentSpider,
+          window.currentBird
+        ];
+        const iconSpacing = 70;
+        const iconY = -20;
+        for (let i = 0; i < iconNames.length; i++) {
+          const iconName = iconNames[i];
+          if (!iconName) continue;
+          const iconSprite = addImageToScene(this, -195 + i * iconSpacing, iconY, iconName);
+          if (iconSprite) {
+            iconSprite.setScale(0.75);
+            bounceContainer.add(iconSprite);
+          }
+        }
+
+        const nameText = this.add.bitmapText(0, 40, "goldFont", userName, 32).setOrigin(0.5);
         bounceContainer.add(nameText);
 
-        const starsIcon = this.add.image(-100, -20, "GJ_GameSheet03", "GJ_starsIcon_001.png").setScale(0.6);
-        const starsText = this.add.bitmapText(-60, -20, "bigFont", stars, 24).setOrigin(0, 0.5);
-        bounceContainer.add(starsIcon);
-        bounceContainer.add(starsText);
+        const statsY = -10;
+        const stats = [
+          { icon: "GJ_starsIcon_001.png", value: stars, label: "Stars" },
+          { icon: "GJ_demonIcon_001.png", value: demons, label: "Demons" }
+        ];
+        let statsX = -70;
+        for (const stat of stats) {
+          const statIcon = this.add.image(statsX, statsY, "GJ_GameSheet03", stat.icon).setScale(0.6);
+          const statText = this.add.bitmapText(statsX + 35, statsY, "bigFont", String(stat.value), 24).setOrigin(0, 0.5);
+          bounceContainer.add(statIcon);
+          bounceContainer.add(statText);
+          statsX += 160;
+        }
 
-        const demonsIcon = this.add.image(-100, 10, "GJ_GameSheet03", "GJ_demonIcon_001.png").setScale(0.6);
-        const demonsText = this.add.bitmapText(-60, 10, "bigFont", demons, 24).setOrigin(0, 0.5);
-        bounceContainer.add(demonsIcon);
-        bounceContainer.add(demonsText);
+        const rewardStars = window._userStars || 0;
+        const rewardText = this.add.bitmapText(0, 20, "goldFont", `Bonus Stars: ${rewardStars}`, 28).setOrigin(0.5).setTint(0xaaddff);
+        bounceContainer.add(rewardText);
+
+        const accountIdText = this.add.bitmapText(0, 80, "bigFont", `Account ID: ${accountID}`, 22).setOrigin(0.5).setTint(0xaaddff);
+        const playerIdText = this.add.bitmapText(0, 110, "bigFont", `Player ID: ${userMap["16"] || "?"}`, 20).setOrigin(0.5).setTint(0xaaddff);
+        bounceContainer.add(accountIdText);
+        bounceContainer.add(playerIdText);
 
         // Logout button
-        const logoutBtn = this.add.container(0, 60).setScrollFactor(0).setDepth(1001);
+        const logoutBtn = this.add.container(0, 150).setScrollFactor(0).setDepth(1001);
         const logoutBg = this.add.rectangle(0, 0, 120, 40, 0x222222, 0.8).setOrigin(0.5);
         const logoutLabel = this.add.bitmapText(0, 0, "goldFont", "Logout", 24).setOrigin(0.5);
         logoutBtn.add([logoutBg, logoutLabel]);
@@ -3235,10 +3312,10 @@ _buildSettingsPopup() {
     htmlInput1.maxLength = 20;
     htmlInput1.style.cssText = `
       position: fixed;
-      left: ${inputX}px;
-      top: ${screenHeight / 2 + inputY1}px;
-      width: ${inputW}px;
-      height: ${inputH}px;
+      left: 0px;
+      top: 0px;
+      width: 0px;
+      height: 0px;
       background: transparent;
       border: none;
       outline: none;
@@ -3256,10 +3333,10 @@ _buildSettingsPopup() {
     htmlInput2.maxLength = 50;
     htmlInput2.style.cssText = `
       position: fixed;
-      left: ${inputX}px;
-      top: ${screenHeight / 2 + inputY2}px;
-      width: ${inputW}px;
-      height: ${inputH}px;
+      left: 0px;
+      top: 0px;
+      width: 0px;
+      height: 0px;
       background: transparent;
       border: none;
       outline: none;
@@ -3271,6 +3348,26 @@ _buildSettingsPopup() {
       caret-color: #ffffff;
     `;
     document.body.appendChild(htmlInput2);
+    const canvas = this.sys.game.canvas;
+    const updateAccountInputPosition = () => {
+      const rect = canvas.getBoundingClientRect();
+      const sx = rect.width / screenWidth;
+      const sy = rect.height / screenHeight;
+      const left = rect.left + ((screenWidth / 2 - inputW / 2) * sx);
+      htmlInput1.style.left = `${left}px`;
+      htmlInput1.style.top = `${rect.top + (screenHeight / 2 + inputY1) * sy}px`;
+      htmlInput1.style.width = `${inputW * sx}px`;
+      htmlInput1.style.height = `${inputH * sy}px`;
+      htmlInput1.style.fontSize = `${Math.max(16, Math.round(18 * sy))}px`;
+      htmlInput2.style.left = `${left}px`;
+      htmlInput2.style.top = `${rect.top + (screenHeight / 2 + inputY2) * sy}px`;
+      htmlInput2.style.width = `${inputW * sx}px`;
+      htmlInput2.style.height = `${inputH * sy}px`;
+      htmlInput2.style.fontSize = `${Math.max(16, Math.round(18 * sy))}px`;
+    };
+    updateAccountInputPosition();
+    window.addEventListener("resize", updateAccountInputPosition);
+    this._accountInfoPopup._htmlInputResizeFn = updateAccountInputPosition;
     // Labels
     const label1 = this.add.bitmapText(screenWidth / 2, screenHeight / 2 + inputY1 - 25, "bigFont", "Account ID", 20).setOrigin(0.5).setTint(0xffffff);
     bounceContainer.add(label1);
@@ -3339,6 +3436,10 @@ _buildSettingsPopup() {
   }
   _closeAccountInfoPopup() {
     if (this._accountInfoPopup) {
+      if (this._accountInfoPopup._htmlInputResizeFn) {
+        window.removeEventListener("resize", this._accountInfoPopup._htmlInputResizeFn);
+        this._accountInfoPopup._htmlInputResizeFn = null;
+      }
       if (this._accountInfoPopup._htmlInputs) {
         this._accountInfoPopup._htmlInputs.forEach(input => input.remove());
       }
@@ -5004,10 +5105,8 @@ _applyMirrorEffect() {
     _0xe44f6d += 48;
     const stars = window._onlineLevelStars || 0;
     this._endLayerInternal.add(this.add.bitmapText(containerX, _0xe44f6d, "goldFont", "Stars: " + stars, 40).setOrigin(0.5, 0.5).setScale(_0x45b6e4));
-    const _0x452429 = ["Awesome!", "Good\nJob!", "Well\nDone!", "Impressive!", "Amazing!", "Incredible!", "Skillful!", "Brilliant!", "Not\nbad!", "Warp\nSpeed!", "Challenge\nBreaker!", "Reflex\nMaster!", "I am\nspeechless...", "You are...\nThe One!", "How is this\npossible!?", "You beat\nme..."];
-    const _0x165c06 = _0x452429[Math.floor(Math.random() * _0x452429.length)];
     const _0x45540f = 225;
-    this._endLayerInternal.add(this.add.bitmapText(containerX + _0x45540f, _0x241209, "bigFont", _0x165c06, 40).setOrigin(0.5, 0.5).setScale(0.8).setCenterAlign());
+    this._endLayerInternal.add(this.add.bitmapText(containerX + _0x45540f, _0x241209, "bigFont", `Level Stars: ${stars}`, 40).setOrigin(0.5, 0.5).setScale(0.8).setCenterAlign());
     this._endLayerInternal.add(this.add.image(containerX - _0x45540f, 352.5, "GJ_WebSheet", "getIt_001.png").setScale(1 / 1.5));
     const _0x34b1bd = [{
       key: "downloadApple_001",
