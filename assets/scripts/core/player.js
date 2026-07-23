@@ -3444,6 +3444,10 @@ if (this.p.isFlying || this.p.isUfo) {
     if (this.p.upKeyPressed) {
       this.p.upKeyPressed = false;
       this.p.queuedHold = false;
+      if (this._activeSlopeObj && this._activeSlopeAngle !== null) {
+        const hitSize = this.p.isMini ? 18 : 30;
+        this.p.y += this.p.gravityFlipped ? -hitSize : hitSize;
+      }
       this.flipGravity(!this.p.gravityFlipped, 1.0);
       this.p.onGround = false;
       this.p.canJump = false;
@@ -3478,9 +3482,10 @@ if (this.p.isFlying || this.p.isUfo) {
   }
   updateSwingRotation(_0x217ad3) {
     if (this._activeSlopeObj && this._onSlopeAngle !== null) {
+      const targetAngle = this.p.gravityFlipped ? this._onSlopeAngle + Math.PI : this._onSlopeAngle;
       const _0x2371ed = 0.47250000000000003;
       const _0x1857d4 = Math.min(_0x217ad3 * 1, _0x2371ed * _0x217ad3);
-      this._rotation = this.slerp2D(this._rotation, this._onSlopeAngle, _0x1857d4);
+      this._rotation = this.slerp2D(this._rotation, targetAngle, _0x1857d4);
       return;
     }
     const _0x58cb3a = 10.3860036;
