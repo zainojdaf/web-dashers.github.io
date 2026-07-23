@@ -2352,6 +2352,10 @@ if (this.p.isFlying || this.p.isUfo) {
       }
     } else if (this.p.isWave) {
       this._rotation = 0;
+    } else if (this.p.isSwing) {
+      if (!this._activeSlopeObj) {
+        this._rotation = this.p.gravityFlipped ? Math.PI : 0;
+      }
     }
     this.stopRotation();
     if (_0x4a38a5 && !this.p.isFlying && !this.p.isWave && !this.p.isSpider && !this.p.isSwing && !this._scene?._editorPlaytestActive) {
