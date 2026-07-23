@@ -839,7 +839,7 @@ class LevelEditor {
         player.setBirdVisible(false);
         player.setSpiderVisible(false);
         player.setRobotVisible(false);
-        player._hitboxTrail = [];
+        player.setSwingVisible(false);
         if (player._hitboxGraphics?.clear) player._hitboxGraphics.clear();
     };
 
@@ -1213,9 +1213,9 @@ class LevelEditor {
     }
 
     const primaryGravityBefore = !!this._state.gravityFlipped;
-    if (!this._state.isFlying && !this._state.isWave && !this._state.isUfo && this._state.canJump) {
+    if (!this._state.isFlying && !this._state.isWave && !this._state.isUfo && !this._state.isSwing && this._state.canJump) {
         this._player.updateJump(0);
-    } else if (this._state.isUfo) {
+    } else if (this._state.isUfo || this._state.isSwing) {
         this._player.updateJump(0);
     }
     const primaryGravityChanged = this._isDual && !!this._state.gravityFlipped !== primaryGravityBefore;
@@ -1343,9 +1343,6 @@ class LevelEditor {
                 const secondaryBallInputGravity = this._state2.isBall && this._state2.upKeyPressed;
                 const secondarySpiderInputGravity = this._state2.isSpider && this._state2.upKeyPressed;
                 this._player2.updateJump(verticalDelta);
-                if (!this._state2.upKeyPressed) this._state.upKeyPressed = false;
-                if (!this._state2.queuedHold) this._state.queuedHold = false;
-                if (this._state2._orbActivationConsumedForPress) this._state._orbActivationConsumedForPress = true;
                 this._state2.y += this._state2.yVelocity * verticalDelta;
                 this._player2.checkCollisions(this._playerWorldX - centerX - horizontalDelta);
                 if (this._isDual && !this._state2.isDead && secondarySharedBefore !== undefined && this._getDualSharedSignature?.(this._state2) !== secondarySharedBefore) {
@@ -1366,7 +1363,7 @@ class LevelEditor {
 
             if (this._state.isDead) break;
 
-            if (!this._state.isFlying && !this._state.isWave && !this._state.isUfo) {
+            if (!this._state.isFlying && !this._state.isWave && !this._state.isUfo && !this._state.isSwing) {
                 if (this._state.isBall) {
                     const ballOnSurface = this._state.onGround || this._state.onCeiling;
                     this._player.updateBallRoll(horizontalDelta, ballOnSurface);

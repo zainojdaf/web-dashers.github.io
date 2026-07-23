@@ -1866,7 +1866,7 @@ if (this.p.isFlying || this.p.isUfo) {
             if (this.p.isWave && this._waveLayers.includes(playerLayer)) {
               _miniS *= 0.94; //fix wave size
             }
-            playerLayer.sprite.scaleY = (this.p.gravityFlipped ? -_miniS : _miniS);
+            playerLayer.sprite.scaleY = (this.p.gravityFlipped && !this.p.isSwing) ? -_miniS : _miniS;
             playerLayer.sprite.scaleX = (this.p.mirrored ? -_miniS : _miniS);
         }
       }
@@ -1886,7 +1886,7 @@ if (this.p.isFlying || this.p.isUfo) {
             if (this.p.isWave && this._waveLayers.includes(playerLayer)) {
               _miniS *= 0.94; //fix wave size
             }
-            playerLayer.sprite.scaleY = (this.p.gravityFlipped ? -_miniS : _miniS);
+            playerLayer.sprite.scaleY = (this.p.gravityFlipped && !this.p.isSwing) ? -_miniS : _miniS;
             playerLayer.sprite.scaleX = (this.p.mirrored ? -_miniS : _miniS);
         }
       }
