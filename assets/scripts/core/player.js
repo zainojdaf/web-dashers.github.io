@@ -4154,6 +4154,7 @@ _updateWaveJump(dt) {
             this.exitBallMode();
             this.exitWaveMode();
             this.exitShipMode();
+            this.exitUfoMode();
             this.enterUfoMode(gameObj);
           }
         } else if (_colType === "portal_cube") {
@@ -4177,7 +4178,8 @@ _updateWaveJump(dt) {
             this.exitWaveMode();
             this.exitShipMode();
             this.exitUfoMode();
-            this.exitSpiderMode();
+            this.exitSpiderMode()
+            this.exitSwingMode();
             this.enterSwingMode(gameObj);
           }
         } else if (_colType === "portal_ball") {
