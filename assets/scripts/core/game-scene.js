@@ -6543,7 +6543,8 @@ _buildSettingsPopup() {
       if (_primaryImmediateGravityChanged) {
         _primaryImmediateGravitySynced = this._syncDualGlobalsFromPrimary({
           skipBallInputGravity: this._state.isBall && _primaryImmediateJumped,
-          skipSpiderInputGravity: this._state.isSpider && _primaryImmediateJumped
+          skipSpiderInputGravity: this._state.isSpider && _primaryImmediateJumped,
+          skipSwingInputGravity: this._state.isSwing && _primaryImmediateJumped
         });
       }
       if (this._isDual && !this._state2.isDead) {
@@ -6554,6 +6555,7 @@ _buildSettingsPopup() {
         const _secondaryImmediateBeforeGravity = !!this._state2.gravityFlipped;
         const _secondaryImmediateBallInput = this._state2.isBall && this._state2.upKeyPressed;
         const _secondaryImmediateSpiderInput = this._state2.isSpider && this._state2.upKeyPressed;
+        const _secondaryImmediateSwingInput = this._state2.isSwing && this._state2.upKeyPressed;
         if (!this._state2.isFlying && !this._state2.isWave && !this._state2.isUfo && !this._state2.isSwing && this._state2.canJump) {
           this._player2.updateJump(0);
         } else if (this._state2.isUfo || this._state2.isSwing) {
@@ -6564,7 +6566,8 @@ _buildSettingsPopup() {
         if (!!this._state2.gravityFlipped !== _secondaryImmediateBeforeGravity) {
           this._syncDualGlobalsFromSecondary({
             skipBallInputGravity: _secondaryImmediateBallInput,
-            skipSpiderInputGravity: _secondaryImmediateSpiderInput
+            skipSpiderInputGravity: _secondaryImmediateSpiderInput,
+            skipSwingInputGravity: _secondaryImmediateSwingInput
           });
         }
       }
@@ -7732,7 +7735,8 @@ _buildSettingsPopup() {
       if (this._isDual && this._getDualSharedSignature(this._state) !== _primarySharedBefore) {
         _primaryGravitySynced = this._syncDualGlobalsFromPrimary({
           skipBallInputGravity: _primaryGravityChanged && this._state.isBall && _dualInputState.upKeyPressed,
-          skipSpiderInputGravity: _primaryGravityChanged && this._state.isSpider && _dualInputState.upKeyPressed
+          skipSpiderInputGravity: _primaryGravityChanged && this._state.isSpider && _dualInputState.upKeyPressed,
+          skipSwingInputGravity: _primaryGravityChanged && this._state.isSwing && _dualInputState.upKeyPressed
         });
       }
       if (this._isDual && this._state.isDead && !this._state2.isDead) {
@@ -7749,13 +7753,15 @@ _buildSettingsPopup() {
         const _secondarySharedBefore = this._getDualSharedSignature(this._state2);
         const _secondaryBallInputGravity = this._state2.isBall && this._state2.upKeyPressed;
         const _secondarySpiderInputGravity = this._state2.isSpider && this._state2.upKeyPressed;
+        const _secondarySwingInputGravity = this._state2.isSwing && this._state2.upKeyPressed;
         this._player2.updateJump(verticalDelta);
         this._state2.y += this._state2.yVelocity * verticalDelta;
         this._player2.checkCollisions(this._playerWorldX - centerX - horizontalDelta);
         if (this._isDual && !this._state2.isDead && this._getDualSharedSignature(this._state2) !== _secondarySharedBefore) {
           this._syncDualGlobalsFromSecondary({
             skipBallInputGravity: _secondaryBallInputGravity,
-            skipSpiderInputGravity: _secondarySpiderInputGravity
+            skipSpiderInputGravity: _secondarySpiderInputGravity,
+            skipSwingInputGravity: _secondarySwingInputGravity
           });
         }
         this._resolveDualBallOverlap();
@@ -8180,6 +8186,11 @@ _applyMirrorEffect() {
     if (options.forceGravitySync) return false;
     return !!options.skipSpiderInputGravity;
   }
+  _shouldSkipDualSwingInputGravitySync(fromState, options = {}) {
+    if (!fromState?.isSwing) return false;
+    if (options.forceGravitySync) return false;
+    return !!options.skipSwingInputGravity;
+  }
   _isDualBallOnSurface(state) {
     return !!(state && (state.onGround || state.onCeiling || state.canJump));
   }
@@ -8240,7 +8251,7 @@ _applyMirrorEffect() {
   _syncDualGlobalsFromPrimary(options = {}) {
     if (!this._isDual || !this._state || !this._state2 || this._state2.isDead) return false;
     let gravitySynced = false;
-    if (!this._shouldSkipDualBallGravitySync(this._state, this._state2, options) && !this._shouldSkipDualSpiderInputGravitySync(this._state, options)) {
+    if (!this._shouldSkipDualBallGravitySync(this._state, this._state2, options) && !this._shouldSkipDualSpiderInputGravitySync(this._state, options) && !this._shouldSkipDualSwingInputGravitySync(this._state, options)) {
       const nextGravity = !this._state.gravityFlipped;
       this._state2.gravityFlipped = nextGravity;
       gravitySynced = true;
@@ -8252,7 +8263,7 @@ _applyMirrorEffect() {
   _syncDualGlobalsFromSecondary(options = {}) {
     if (!this._isDual || !this._state || !this._state2 || this._state.isDead || this._state2.isDead) return false;
     let gravitySynced = false;
-    if (!this._shouldSkipDualBallGravitySync(this._state2, this._state, options) && !this._shouldSkipDualSpiderInputGravitySync(this._state2, options)) {
+    if (!this._shouldSkipDualBallGravitySync(this._state2, this._state, options) && !this._shouldSkipDualSpiderInputGravitySync(this._state2, options) && !this._shouldSkipDualSwingInputGravitySync(this._state2, options)) {
       const nextGravity = !this._state2.gravityFlipped;
       this._state.gravityFlipped = nextGravity;
       gravitySynced = true;
