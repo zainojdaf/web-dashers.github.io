@@ -6974,6 +6974,7 @@ _buildSettingsPopup() {
     this._state.isUfo = false;
     this._state.isSpider = false;
     this._state.isRobot = false;
+    this._state.isSwing = false;
     this._state.isBird = false;
     if (checkpoint.isFlying) {
       this._player.enterShipMode(null, true); // dont mess with y velocity if ur loading a checkpoint
@@ -6987,6 +6988,8 @@ _buildSettingsPopup() {
       this._player.enterRobotMode();
     } else if (checkpoint.isSpider) {
       this._player.enterSpiderMode();
+    } else if (checkpoint.isSwing) {
+      this._player.enterSwingMode(null, true); // dont mess with y velocity if ur loading a checkpoint
     } else if (checkpoint.isBird) {
       this._player.setBirdVisible(true);
       this._player.setCubeVisible(true);
@@ -7004,6 +7007,7 @@ _buildSettingsPopup() {
     this._state.isUfo = checkpoint.isUfo;
     this._state.isSpider = checkpoint.isSpider;
     this._state.isRobot = checkpoint.isRobot;
+    this._state.isSwing = checkpoint.isSwing;
     this._state.isBird = checkpoint.isBird;
     this._state._robotHold = !!checkpoint.robotHold;
     this._state._robotHoldTimer = checkpoint.robotHoldTimer || 0;

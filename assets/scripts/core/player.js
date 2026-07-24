@@ -1861,7 +1861,8 @@ if (this.p.isFlying || this.p.isUfo) {
             playerLayer.sprite.x = _0x7f0705;
             playerLayer.sprite.y = _0x1a433c;
             const isBallLayer = this._ballLayers.includes(playerLayer);
-            playerLayer.sprite.rotation = isBallLayer ? playerRotation : (this.p.mirrored ? -playerRotation : playerRotation);
+            const isSwingLayer = this._swingLayers.includes(playerLayer);
+            playerLayer.sprite.rotation = (isBallLayer || isSwingLayer) ? playerRotation : (this.p.mirrored ? -playerRotation : playerRotation);
             let _miniS = this.p.isMini ? 0.6 : 1;
             if (this.p.isWave && this._waveLayers.includes(playerLayer)) {
               _miniS *= 0.94; //fix wave size
@@ -1881,7 +1882,8 @@ if (this.p.isFlying || this.p.isUfo) {
             playerLayer.sprite.x = _0x7f0705;
             playerLayer.sprite.y = _0x1a433c;
             const isBallLayer = this._ballLayers.includes(playerLayer);
-            playerLayer.sprite.rotation = isBallLayer ? playerRotation : (this.p.mirrored ? -playerRotation : playerRotation);
+            const isSwingLayer = this._swingLayers.includes(playerLayer);
+            playerLayer.sprite.rotation = (isBallLayer || isSwingLayer) ? playerRotation : (this.p.mirrored ? -playerRotation : playerRotation);
             let _miniS = this.p.isMini ? 0.6 : 1;
             if (this.p.isWave && this._waveLayers.includes(playerLayer)) {
               _miniS *= 0.94; //fix wave size
@@ -4154,7 +4156,6 @@ _updateWaveJump(dt) {
             this.exitBallMode();
             this.exitWaveMode();
             this.exitShipMode();
-            this.exitUfoMode();
             this.enterUfoMode(gameObj);
           }
         } else if (_colType === "portal_cube") {
@@ -4178,7 +4179,7 @@ _updateWaveJump(dt) {
             this.exitWaveMode();
             this.exitShipMode();
             this.exitUfoMode();
-            this.exitSpiderMode()
+            this.exitSpiderMode();
             this.exitSwingMode();
             this.enterSwingMode(gameObj);
           }
