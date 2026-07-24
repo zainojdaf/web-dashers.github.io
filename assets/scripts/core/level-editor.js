@@ -1237,9 +1237,9 @@ class LevelEditor {
         const secondaryGravityBefore = !!this._state2.gravityFlipped;
         const secondaryBallInputGravity = this._state2.isBall && this._state2.upKeyPressed;
         const secondarySpiderInputGravity = this._state2.isSpider && this._state2.upKeyPressed;
-        if (!this._state2.isFlying && !this._state2.isWave && !this._state2.isUfo && this._state2.canJump) {
+        if (!this._state2.isFlying && !this._state2.isWave && !this._state2.isUfo && !this._state2.isSwing && this._state2.canJump) {
             this._player2.updateJump(0);
-        } else if (this._state2.isUfo) {
+        } else if (this._state2.isUfo || this._state2.isSwing) {
             this._player2.updateJump(0);
         }
         if (!!this._state2.gravityFlipped !== secondaryGravityBefore) {

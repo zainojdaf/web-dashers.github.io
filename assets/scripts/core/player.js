@@ -2333,6 +2333,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this._setGamemodeFlyBounds(false, 0);
   }
   hitGround() {
+    if (this.p.isSwing) console.log("SWING_HITGROUND", this.p === this._scene?._state2 ? "player2" : "player1", "upKeyDown=" + this.p.upKeyDown, "onCeiling_before=" + this.p.onCeiling);
     const _0x4a38a5 = !this.p.onGround;
     if (!this.p.isFlying && !this.p.isWave && !this.p.isUfo && !this.p.isSwing) {
       this.p.lastGroundY = this.p.y;
@@ -3320,6 +3321,7 @@ if (this.p.isFlying || this.p.isUfo) {
     } else if (this.p.isRobot) {
       this._updateRobotJump(_0x3d1c6f);
     } else if (this.p.isSwing) {
+      if (this.p.upKeyPressed) console.log("SWING_CLICK_FIRE", this.p === this._scene?._state2 ? "player2" : "player1", "gravityFlipped=" + this.p.gravityFlipped);
       this._updateSwingJump(_0x3d1c6f);
       this.updateSwingRotation(_0x3d1c6f);
     } else if (this.p.upKeyDown && this.p.canJump) {
@@ -3450,6 +3452,7 @@ if (this.p.isFlying || this.p.isUfo) {
       }
       this.flipGravity(!this.p.gravityFlipped, 1.0);
       this.p.onGround = false;
+      this.p.onCeiling = false;
       this.p.canJump = false;
       this.p.isJumping = false;
       return;
@@ -3457,7 +3460,11 @@ if (this.p.isFlying || this.p.isUfo) {
     if (this.playerIsFalling() && !this.p._slopeBounceActive) {
       this.p.canJump = false;
     }
-    this.p.yVelocity -= _swingGrav * _0x2fe319 * this.flipMod();
+    if (!(this.p.onGround || this.p.onCeiling)) {
+      this.p.yVelocity -= _swingGrav * _0x2fe319 * this.flipMod();
+    } else {
+      this.p.yVelocity = 0;
+    }
     if (this.p.isJumping) {
       if (this.playerIsFalling()) {
         this.p.isJumping = false;
@@ -3489,10 +3496,9 @@ if (this.p.isFlying || this.p.isUfo) {
       return;
     }
     if ((this.p.onGround || this.p.onCeiling) && !this.p.isJumping) {
-      const flatAngle = Math.round(this._rotation / Math.PI) * Math.PI;
       const _0x2371ed = 0.25;
       const _0x1857d4 = Math.min(_0x217ad3 * 1, _0x2371ed * _0x217ad3);
-      this._rotation = this.slerp2D(this._rotation, flatAngle, _0x1857d4);
+      this._rotation = this.slerp2D(this._rotation, 0, _0x1857d4);
       return;
     }
     const _0x58cb3a = 10.3860036;
@@ -4020,7 +4026,7 @@ _updateWaveJump(dt) {
     const playersY = this.p.y;
     const playersLastY = this.p.lastY;
     const previousCollisionWorldY = Number.isFinite(this._lastCollisionWorldY) ? this._lastCollisionWorldY : playersLastY;
-    const gamemodeAddition = this.p.isFlying || this.p.isWave || this.p.isUfo ? 12 : 20;
+    const gamemodeAddition = this.p.isFlying || this.p.isWave || this.p.isUfo || this.p.isSwing ? 12 : 20;
     this.p.collideTop = 0;
     this.p.collideBottom = 0;
     this.p.onCeiling = false;

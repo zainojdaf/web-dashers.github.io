@@ -6487,6 +6487,8 @@ _buildSettingsPopup() {
       this._player.enterRobotMode();
     } else if (gamemode == 6) {
       this._player.enterSpiderMode();
+    } else if (gamemode == 7) {
+      this._player.enterSwingMode();
     }
 
     this._applyLevelStartOptions();
@@ -6880,6 +6882,8 @@ _buildSettingsPopup() {
         this._player.enterRobotMode();
       } else if (gamemode == 6) {
         this._player.enterSpiderMode();
+      } else if (gamemode == 7) {
+        this._player.enterSwingMode();
       }
 
       this._applyLevelStartOptions();
