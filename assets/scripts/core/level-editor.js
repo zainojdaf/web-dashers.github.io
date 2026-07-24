@@ -1384,7 +1384,7 @@ class LevelEditor {
                 }
             }
 
-            if (this._isDual && !this._state2.isDead && !this._state2.isFlying && !this._state2.isWave && !this._state2.isUfo) {
+            if (this._isDual && !this._state2.isDead && !this._state2.isFlying && !this._state2.isWave && !this._state2.isUfo && !this._state2.isSwing) {
                 if (this._state2.isBall) {
                     const ball2OnSurface = this._state2.onGround || this._state2.onCeiling;
                     this._player2.updateBallRoll(horizontalDelta, ball2OnSurface);
